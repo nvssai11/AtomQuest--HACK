@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+client/dist/
+client/.vite/
+
+# Environment variables — NEVER commit secrets
+.env
+.env.local
+.env.production
+server/.env
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# Coverage reports
+coverage/
+client/coverage/
+
+# Temporary
+*.tmp
+*.temp
