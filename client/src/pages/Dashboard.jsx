@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Layout } from '../components/Layout';
 import { api } from '../api';
+import { Card, LoadingSpinner, EmptyState } from '../components/primitives';
 
 const DashboardCard = ({ title, value, subtitle, icon, trend }) => (
-  <div className="card flex flex-col h-full">
+  <div className="dashboard-card-premium">
     <div className="flex items-start justify-between mb-4">
-      <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center text-2xl text-brand-600">
+      <div className="dashboard-card-icon-wrap">
         {icon}
       </div>
       {trend !== undefined && trend !== null && (
@@ -94,20 +95,26 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="card border-t-4 border-t-brand-500">
+      <Card className="border-t-4 border-t-brand-500">
         <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
         {activityLoading ? (
-          <p className="text-sm text-text-secondary">Loading activity...</p>
+          <div className="flex justify-center py-8">
+            <LoadingSpinner size="lg" />
+          </div>
         ) : activity.length === 0 ? (
-          <p className="text-sm text-text-secondary">No audit events yet.</p>
+          <EmptyState 
+            title="No recent activity" 
+            description="Audit events and recent actions will appear here." 
+            icon="📭" 
+          />
         ) : (
-          <div className="space-y-4">
+          <div className="activity-timeline">
             {activity.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-start gap-4 pb-4 border-b border-border-color last:border-0"
+                className="activity-item-premium"
               >
-                <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold shrink-0 text-sm">
+                <div className="activity-avatar">
                   {entry.performedByName?.charAt(0) || 'A'}
                 </div>
                 <div>
@@ -115,17 +122,17 @@ const Dashboard = () => {
                     {entry.performedByName} {formatAuditAction(entry)}
                   </p>
                   {entry.reason && (
-                    <p className="text-sm text-text-secondary">{entry.reason}</p>
+                    <p className="text-sm text-text-secondary mt-1">{entry.reason}</p>
                   )}
-                  <span className="text-xs text-text-secondary mt-1 block">
-                    {formatTimestamp(entry.timestamp)}
+                  <span className="text-xs text-text-secondary mt-2 block">
+                    🕒 {formatTimestamp(entry.timestamp)}
                   </span>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </Layout>
   );
 };

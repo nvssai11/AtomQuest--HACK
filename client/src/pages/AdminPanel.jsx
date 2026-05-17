@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
-import { Badge } from '../components/UI';
 import { api } from '../api';
+import { useNotification } from '../context/NotificationContext.jsx';
+import { Button, Card, Badge, Table, Input, LoadingSpinner, EmptyState } from '../components/primitives';
 
 const AdminPanel = () => {
   const [escalations, setEscalations] = useState([]);
@@ -9,6 +10,7 @@ const AdminPanel = () => {
   const [hierarchy, setHierarchy] = useState([]);
   const [cycleInfo, setCycleInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { notify } = useNotification();
   const [triggering, setTriggering] = useState(false);
   const [unlockGoalId, setUnlockGoalId] = useState('');
   const [unlockReason, setUnlockReason] = useState('');
@@ -49,10 +51,10 @@ const AdminPanel = () => {
     setTriggering(true);
     try {
       const res = await api.post('/admin/escalations/trigger');
-      alert(res.message);
+      notify.success(res.message || 'Escalations triggered successfully.');
       fetchEscalations();
     } catch (err) {
-      alert(err.message);
+      notify.error(err.message || 'Failed to trigger escalations.');
     } finally {
       setTriggering(false);
     }
@@ -64,18 +66,18 @@ const AdminPanel = () => {
 
   const handleUnlock = async () => {
     if (!unlockGoalId || unlockReason.length < 20) {
-      alert('Goal ID and reason (min 20 chars) required.');
+      notify.error('Goal ID and reason (min 20 chars) required.');
       return;
     }
     try {
       await api.post(`/admin/goals/${unlockGoalId}/unlock`, { reason: unlockReason });
-      alert('Goal unlocked. Action logged in audit trail.');
+      notify.success('Goal unlocked. Action logged in audit trail.');
       setUnlockGoalId('');
       setUnlockReason('');
       const audit = await api.get('/audit');
       setAuditLog(audit || []);
     } catch (err) {
-      alert(err.message);
+      notify.error(err.message || 'Unable to unlock goal.');
     }
   };
 
@@ -84,11 +86,26 @@ const AdminPanel = () => {
       await api.post('/admin/cycle/phase', { phase: nextPhase });
       const cycle = await api.get('/cycle/current');
       setCycleInfo(cycle);
-      alert(`Cycle progressed to ${nextPhase}`);
+      notify.success(`Cycle progressed to ${nextPhase}`);
     } catch (err) {
-      alert(err.message);
+      notify.error(err.message || 'Failed to progress cycle phase.');
     }
   };
+
+  const hierarchyColumns = [
+    { header: 'Employee', accessor: 'employee' },
+    { header: 'Role', accessor: 'role' },
+    { header: 'Manager ID', accessor: 'managerId' },
+    { header: 'Department', accessor: 'department' },
+  ];
+
+  const escalationColumns = [
+    { header: 'Status', accessor: 'status' },
+    { header: 'Affected User', accessor: 'affectedUser' },
+    { header: 'Trigger', accessor: 'trigger' },
+    { header: 'Notes', accessor: 'notes' },
+    { header: 'Date', accessor: 'date' },
+  ];
 
   return (
     <Layout>
@@ -101,7 +118,7 @@ const AdminPanel = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Cycle Management Card */}
-        <div className="card">
+        <Card>
           <div className="flex justify-between items-start mb-6">
             <h2 className="text-lg font-bold">Cycle Management</h2>
             <Badge variant="success">Active</Badge>
@@ -119,22 +136,22 @@ const AdminPanel = () => {
                     <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
-                <button type="button" className="btn btn-secondary text-xs" onClick={handleProgressPhase}>Progress</button>
+                <Button variant="secondary" onClick={handleProgressPhase} className="py-1 text-xs">Progress</Button>
               </div>
             </div>
             
             <div className="pt-4 border-t border-border-color">
               <h3 className="text-sm font-semibold mb-2">Compliance Reports</h3>
               <p className="text-xs text-text-secondary mb-3">Download full CSV reports of goal achievements and UoM scoring.</p>
-              <button onClick={handleDownloadReport} className="btn btn-secondary w-full justify-center">
+              <Button variant="secondary" onClick={handleDownloadReport} className="w-full justify-center">
                 Download Q1 Achievement Report (CSV)
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Audit & Overrides Card */}
-        <div className="card">
+        <Card>
           <div className="flex justify-between items-start mb-6">
             <h2 className="text-lg font-bold">Audit & Overrides</h2>
             <Badge variant="warning">Restricted</Badge>
@@ -144,115 +161,101 @@ const AdminPanel = () => {
             Use these tools to override locked goals. All actions are permanently recorded in the immutable audit log.
           </p>
           
-          <div className="input-group mb-3">
-            <label className="input-label">Target Goal ID</label>
-            <input className="input-field py-2" placeholder="e.g. goal-004-raj-revenue" value={unlockGoalId} onChange={(e) => setUnlockGoalId(e.target.value)} />
-          </div>
-          <div className="input-group mb-4">
-            <label className="input-label">Reason for Override (Required for Audit)</label>
-            <input className="input-field py-2" placeholder="Business justification (min 20 chars)..." value={unlockReason} onChange={(e) => setUnlockReason(e.target.value)} />
+          <div className="space-y-3 mb-4">
+            <Input 
+              label="Target Goal ID" 
+              placeholder="e.g. goal-004-raj-revenue" 
+              value={unlockGoalId} 
+              onChange={(e) => setUnlockGoalId(e.target.value)} 
+            />
+            <Input 
+              label="Reason for Override (Required for Audit)" 
+              placeholder="Business justification (min 20 chars)..." 
+              value={unlockReason} 
+              onChange={(e) => setUnlockReason(e.target.value)} 
+            />
           </div>
           
-          <button type="button" className="btn btn-primary bg-danger shadow-danger/30 w-full justify-center" onClick={handleUnlock}>
+          <Button variant="danger" className="w-full justify-center" onClick={handleUnlock}>
             Force Unlock Goal
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
 
-      <div className="card mb-8">
+      <Card className="mb-8">
         <h2 className="text-lg font-bold mb-4">Org Hierarchy (managerId on user)</h2>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr><th>Employee</th><th>Role</th><th>Manager ID</th><th>Department</th></tr>
-            </thead>
-            <tbody>
-              {hierarchy.map((h) => (
-                <tr key={h.userId}>
-                  <td>{h.user?.name}</td>
-                  <td>{h.user?.role}</td>
-                  <td className="text-xs font-mono">{h.managerId || '—'}</td>
-                  <td>{h.department}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <Table 
+          columns={hierarchyColumns}
+          data={hierarchy}
+          renderRow={(h) => (
+            <tr key={h.userId}>
+              <td>{h.user?.name}</td>
+              <td>{h.user?.role}</td>
+              <td className="text-xs font-mono">{h.managerId || '—'}</td>
+              <td>{h.department}</td>
+            </tr>
+          )}
+        />
+      </Card>
 
-      <div className="card mb-8">
+      <Card className="mb-8">
         <h2 className="text-lg font-bold mb-4">Immutable Audit Trail</h2>
-        <div className="space-y-3 max-h-64 overflow-y-auto">
-          {auditLog.map((entry) => (
-            <div key={entry.id} className="text-sm border-b border-border-color pb-2">
-              <p className="font-medium">{entry.performedByName} — {entry.action} on {entry.field}</p>
-              <p className="text-text-secondary text-xs">{entry.oldValue} → {entry.newValue} • {entry.reason}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+        {auditLog.length === 0 ? (
+          <EmptyState icon="📜" title="No audit logs" description="No actions have been recorded yet." className="min-h-[150px]" />
+        ) : (
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {auditLog.map((entry) => (
+              <div key={entry.id} className="text-sm border-b border-border-color pb-2 last:border-0">
+                <p className="font-medium">{entry.performedByName} — {entry.action} on {entry.field}</p>
+                <p className="text-text-secondary text-xs">{entry.oldValue} → {entry.newValue} • {entry.reason}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* Escalation Engine */}
-      <div className="card border-t-4 border-t-danger">
+      <Card className="border-t-4 border-t-danger">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-lg font-bold">Escalation Engine</h2>
             <p className="text-xs text-text-secondary">System-generated escalations for overdue submissions and approvals.</p>
           </div>
-          <button 
-            className="btn btn-secondary"
+          <Button 
+            variant="secondary"
             onClick={handleTriggerEscalations}
             disabled={triggering}
           >
-            {triggering ? 'Running...' : 'Run Engine Manually'}
-          </button>
+            {triggering ? <><LoadingSpinner size="sm" className="mr-2" /> Running...</> : 'Run Engine Manually'}
+          </Button>
         </div>
 
-        <div className="table-container">
-          {loading ? (
-            <div className="p-4 text-center">Loading escalations...</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Status</th>
-                  <th>Affected User</th>
-                  <th>Trigger</th>
-                  <th>Notes</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {escalations.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="text-center py-4">No active escalations.</td>
-                  </tr>
-                ) : (
-                  escalations.map(esc => (
-                    <tr key={esc.id}>
-                      <td>
-                        <Badge variant={esc.status === 'open' ? 'danger' : 'success'}>
-                          {esc.status}
-                        </Badge>
-                      </td>
-                      <td className="font-medium">{esc.affectedUserName}</td>
-                      <td><code className="text-xs bg-bg-secondary p-1 rounded border border-border-color">{esc.triggerType}</code></td>
-                      <td className="text-xs">{esc.notes}</td>
-                      <td className="text-xs text-text-secondary">
-                        {new Date(esc.escalatedAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+        {loading ? (
+          <div className="flex justify-center py-8"><LoadingSpinner size="lg" /></div>
+        ) : (
+          <Table 
+            columns={escalationColumns}
+            data={escalations}
+            renderRow={(esc) => (
+              <tr key={esc.id}>
+                <td>
+                  <Badge variant={esc.status === 'open' ? 'danger' : 'success'}>
+                    {esc.status}
+                  </Badge>
+                </td>
+                <td className="font-medium">{esc.affectedUserName}</td>
+                <td><code className="text-xs bg-bg-secondary p-1 rounded border border-border-color">{esc.triggerType}</code></td>
+                <td className="text-xs max-w-xs truncate" title={esc.notes}>{esc.notes}</td>
+                <td className="text-xs text-text-secondary">
+                  {new Date(esc.escalatedAt).toLocaleDateString()}
+                </td>
+              </tr>
+            )}
+          />
+        )}
+      </Card>
     </Layout>
   );
 };
 
 export default AdminPanel;
-
-

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
-import { Badge, ProgressBar } from '../components/UI';
+import { Card, Badge, ProgressBar, LoadingSpinner, EmptyState } from '../components/primitives';
 import { api } from '../api';
 
 const Analytics = () => {
@@ -27,7 +27,7 @@ const Analytics = () => {
     fetchAnalytics();
   }, []);
 
-  if (loading) return <Layout><div className="p-8">Loading analytics...</div></Layout>;
+  if (loading) return <Layout><div className="flex justify-center py-12"><LoadingSpinner size="lg" /></div></Layout>;
 
   return (
     <Layout>
@@ -38,7 +38,7 @@ const Analytics = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Score Distribution Chart (Simulated with progress bars) */}
-        <div className="card">
+        <div className="dashboard-card-premium h-full">
           <h2 className="text-lg font-bold mb-6">Q1 Score Distribution</h2>
           
           <div className="space-y-6">
@@ -62,18 +62,18 @@ const Analytics = () => {
               );
             })}
             
-            {!distribution && <p className="text-text-secondary text-sm">No data available for Q1 yet.</p>}
+            {!distribution && <div className="py-8"><EmptyState icon="📊" title="No Data" description="No data available for Q1 yet." /></div>}
           </div>
         </div>
 
         {/* Manager Effectiveness */}
-        <div className="card">
+        <div className="dashboard-card-premium h-full">
           <h2 className="text-lg font-bold mb-2">Manager Effectiveness</h2>
           <p className="text-xs text-text-secondary mb-6">Ranked by average team performance score.</p>
           
           <div className="space-y-4">
             {managers.length === 0 ? (
-              <p className="text-sm text-text-secondary text-center py-4">Not enough check-in data to calculate effectiveness.</p>
+              <div className="py-4"><EmptyState icon="👥" title="No Managers" description="Not enough check-in data to calculate effectiveness." /></div>
             ) : (
               managers.map((mgr, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 border border-border-color rounded-lg bg-bg-secondary hover:bg-brand-50 transition-colors">

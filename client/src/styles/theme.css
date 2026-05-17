@@ -1,0 +1,68 @@
+/* client/src/styles/theme.css */
+:root {
+  /* Typography */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Pristine KFintech Corporate Light Theme (Default) */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --text-primary: #0b1a30; /* Deep navy */
+  --text-secondary: #475569; /* Slate grey */
+  --border-color: #e2e8f0;
+
+  /* Primary Brand Colors (Vibrant KFintech Blue) */
+  --brand-50: #eff6ff;
+  --brand-100: #dbeafe;
+  --brand-500: #0066cc;
+  --brand-600: #004c99;
+  --brand-gradient: linear-gradient(135deg, #0066cc 0%, #004c99 100%);
+
+  /* Status Colors (Light Theme Pastels) */
+  --success: #047857;
+  --success-bg: #ecfdf5;
+  --warning: #b45309;
+  --warning-bg: #fffbeb;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+
+  /* Shadows & Glassmorphism */
+  --shadow-sm: 0 1px 3px rgba(11, 26, 48, 0.05);
+  --shadow-md: 0 10px 25px -5px rgba(11, 26, 48, 0.04), 0 8px 10px -6px rgba(11, 26, 48, 0.04);
+  --shadow-lg: 0 20px 40px -15px rgba(11, 26, 48, 0.08), 0 1px 3px rgba(11, 26, 48, 0.02);
+  --glass-border: 1px solid rgba(226, 232, 240, 0.8);
+  --glass-blur: blur(20px);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4,0,0.2,1);
+  --transition-normal: 300ms cubic-bezier(0.4,0,0.2,1);
+}
+
+[data-theme='dark'] {
+  /* Dynamic Fallback Dark Mode in case theme toggles are triggered */
+  --bg-primary: #0b1a30;
+  --bg-secondary: #081120;
+  --bg-glass: rgba(8, 17, 32, 0.85);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color: rgba(255, 255, 255, 0.08);
+  
+  --brand-50: #1e3a8a;
+  --brand-100: #1e40af;
+  --brand-500: #3b82f6;
+  --brand-600: #2563eb;
+  --brand-gradient: linear-gradient(135deg, #3b82f6 0%, #0066cc 100%);
+  
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.15);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.15);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.8);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.06);
+  --glass-blur: blur(16px);
+}
