@@ -347,43 +347,4 @@ const ApprovalStatusBanner = ({ status, isLocked }) => {
   );
 };
 
-// Add progress bar for total weightage
-const ApprovalTotalWeightageBar = ({ total }) => (
-  <div className="my-2">
-    <ProgressBar progress={total} showLabel variant={total === 100 ? 'success' : total > 100 ? 'danger' : 'brand'} />
-    <span className="text-xs ml-2">Total Weightage: {total}%</span>
-  </div>
-);
 
-// SaaS-like Approval Queue Card Layout
-// <div className="approval-queue-wrapper">
-//   <ApprovalStatusBanner status={selectedSheet?.status || 'draft'} />
-//   <div className="approval-queue-card">
-//     {/* Approval Queue Header */}
-//     <div className="approval-queue-header">
-//       <h2 className="approval-queue-title">Manager Approval Queue</h2>
-//       <span className="approval-queue-period">{selectedSheet?.year || ''}</span>
-//     </div>
-//     {/* Approval List */}
-//     <div className="approval-list">
-//       {goals.map((goal, idx) => (
-//         <div className="approval-card" key={goal.id}>
-//           <div className="approval-card-header">
-//             <span className="approval-title">{goal.title}</span>
-//             <Badge status={goal.status} tooltip={goal.statusDescription} />
-//           </div>
-//           <div className="approval-card-body">
-//             <span className="approval-desc">{goal.description}</span>
-//             <ManagerWeightageInput value={goal.weightage} onChange={handleManagerWeightageChange(idx)} error={goal.weightageError} tooltip="Weightage must be between 5 and 50" />
-//           </div>
-//           <div className="approval-card-footer">
-//             <button className="approval-edit-btn" aria-label="Edit Approval" onClick={() => handleEditApproval(idx)}><FaEdit /></button>
-//             <button className="approval-rework-btn" aria-label="Send for Rework" onClick={() => handleReworkApproval(idx)}><FaArrowLeft /></button>
-//           </div>
-//         </div>
-//       ))}
-//     </div>
-//     {/* Total Weightage Progress */}
-//     <ApprovalTotalWeightageBar total={editedTotalWeightage} />
-//   </div>
-// </div>
