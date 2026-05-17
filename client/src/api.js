@@ -52,9 +52,9 @@ async function fetchClient(endpoint, options = {}) {
 
   if (!response.ok) {
     throw new ApiError(
-      data?.error?.message || 'API Error',
+      data?.error?.message || data?.message || 'API Error',
       response.status,
-      data?.error?.code || 'UNKNOWN'
+      data?.error?.code || data?.code || 'UNKNOWN'
     );
   }
 
