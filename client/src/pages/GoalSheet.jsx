@@ -76,6 +76,12 @@ const GoalSheet = () => {
   const handleCreateGoal = async (e) => {
     e.preventDefault();
     const nextWeightage = Number(newGoal.weightage);
+    
+    if (nextWeightage < 10) {
+      notify.error('Individual goal weightage must be at least 10%.');
+      return;
+    }
+
     const currentWeightage = data?.goals?.reduce((sum, g) => sum + g.weightage, 0) || 0;
     if (currentWeightage + nextWeightage > 100) {
       notify.error(`Total weightage cannot exceed 100%. You only have ${Math.max(100 - currentWeightage, 0)}% remaining.`);
@@ -118,6 +124,12 @@ const GoalSheet = () => {
   const handleUpdateGoal = async (e) => {
     e.preventDefault();
     const nextWeightage = Number(newGoal.weightage);
+
+    if (nextWeightage < 10) {
+      notify.error('Individual goal weightage must be at least 10%.');
+      return;
+    }
+
     const otherWeightage = data?.goals
       ?.filter((g) => g.id !== editingGoal.id)
       .reduce((sum, g) => sum + g.weightage, 0) || 0;
