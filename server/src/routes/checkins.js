@@ -9,6 +9,7 @@ const router = Router();
 router.use(authenticate);
 
 router.post('/', rbac('employee'), validate(schemas.submitCheckIn), checkinsController.submitCheckIn);
+router.get('/me', rbac('employee', 'manager', 'admin'), checkinsController.getMyCheckIn);
 router.get('/team', rbac('manager'), checkinsController.getTeamCheckIns);
 router.post('/:checkinId/comment', rbac('manager'), validate(schemas.addCheckInComment), checkinsController.addManagerComment);
 router.get('/sheet/:sheetId', rbac('manager', 'admin'), checkinsController.getCheckInsForSheet);

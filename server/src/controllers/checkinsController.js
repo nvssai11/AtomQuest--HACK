@@ -45,6 +45,16 @@ const checkinsController = {
     }
   },
 
+  getMyCheckIn(req, res, next) {
+    try {
+      const quarter = req.query.quarter || 'Q1';
+      const data = checkinsService.getMyCheckIn(req.user.id, quarter);
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   getTeamCheckIns(req, res, next) {
     try {
       const quarter = req.query.quarter || 'Q1';

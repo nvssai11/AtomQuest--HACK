@@ -145,6 +145,12 @@ const checkinsService = {
     return checkinRepository.findByGoalSheetId(sheetId);
   },
 
+  getMyCheckIn(userId, quarter) {
+    const cycle = cycleRepository.findActiveCycle();
+    if (!cycle) throw AppError.badRequest('No active cycle');
+    return checkinRepository.findByEmployeeCycleAndQuarter(userId, cycle.id, quarter) || null;
+  },
+
   /**
    * Manager view: direct reports' check-ins for a quarter.
    */

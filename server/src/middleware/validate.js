@@ -110,7 +110,7 @@ export const schemas = {
     title: Joi.string().trim().min(5).max(200),
     description: Joi.string().trim().min(10).max(1000),
     uom: Joi.string().valid('numeric-min', 'numeric-max', 'percent-min', 'percent-max', 'timeline', 'zero'),
-    target: Joi.alternatives().try(Joi.number().positive(), Joi.string().isoDate()),
+    target: Joi.alternatives().try(Joi.number().min(0), Joi.string().isoDate()),
     weightage: Joi.number().min(10).max(100),
   }).min(1), // At least one field required
 
@@ -138,7 +138,7 @@ export const schemas = {
     edits: Joi.array().items(
       Joi.object({
         goalId: Joi.string().required(),
-        target: Joi.alternatives().try(Joi.number().positive(), Joi.string().isoDate()),
+        target: Joi.alternatives().try(Joi.number().min(0), Joi.string().isoDate()),
         weightage: Joi.number().min(10).max(100),
       }).or('target', 'weightage')
     ).default([]),

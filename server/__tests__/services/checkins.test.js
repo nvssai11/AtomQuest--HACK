@@ -119,4 +119,23 @@ describe('CheckinsService', () => {
       expect(result.commentBy).toBe('usr-2');
     });
   });
+
+  describe('getMyCheckIn', () => {
+    it('returns the check-in if one exists', () => {
+      const mockCheckIn = { id: 'ci-1', employeeId: 'usr-1', quarter: 'Q1' };
+      checkinRepository.findByEmployeeCycleAndQuarter.mockReturnValue(mockCheckIn);
+
+      const result = checkinsService.getMyCheckIn('usr-1', 'Q1');
+
+      expect(cycleRepository.findActiveCycle).toHaveBeenCalled();
+      expect(checkinRepository.findByEmployeeCycleAndQuarter).toHaveBeenCalledWith('usr-1', 'cycle-1', 'Q1');
+      expect(result).toEqual(mockCheckIn);
+    });
+
+    it('throws bad request if no active cycle is found', () => {
+      cycleRepository.findActiveCycle.mockReturnValue(null);
+
+      expect(() => checkinsService.getMyCheckIn('usr-1', 'Q1')).toThrow(AppError);
+    });
+  });
 });

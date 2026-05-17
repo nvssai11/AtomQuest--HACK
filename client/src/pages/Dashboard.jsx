@@ -44,19 +44,25 @@ const Dashboard = () => {
   const role = user?.role;
   const [activity, setActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
+  const [cycleInfo, setCycleInfo] = useState(null);
 
   useEffect(() => {
-    const loadActivity = async () => {
+    const loadData = async () => {
       try {
-        const data = await api.get('/audit/recent?limit=8');
-        setActivity(data || []);
+        const [activityData, cycleData] = await Promise.all([
+          api.get('/audit/recent?limit=8'),
+          api.get('/cycle/current')
+        ]);
+        setActivity(activityData || []);
+        setCycleInfo(cycleData);
       } catch {
         setActivity([]);
+        setCycleInfo({ activePhase: 'Q1', year: 2025 });
       } finally {
         setActivityLoading(false);
       }
     };
-    loadActivity();
+    loadData();
   }, []);
 
   return (
@@ -73,15 +79,25 @@ const Dashboard = () => {
       {role === 'employee' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <DashboardCard title="My Role" value="Employee" subtitle="Goal sheet & check-ins" icon="🎯" />
-          <DashboardCard title="Current Phase" value="Q1" subtitle="Quarterly check-in window" icon="📈" />
-          <DashboardCard title="Portal" value="Active" subtitle="FY 2025 performance cycle" icon="⏱️" />
+          <DashboardCard 
+            title="Current Phase" 
+            value={cycleInfo?.activePhase || 'Q1'} 
+            subtitle={cycleInfo?.activePhase === 'goal-setting' ? 'Goal creation & submission' : `${cycleInfo?.activePhase || 'Q1'} check-in window`} 
+            icon="📈" 
+          />
+          <DashboardCard title="Portal" value="Active" subtitle={`FY ${cycleInfo?.year || '2025'} performance cycle`} icon="⏱️" />
         </div>
       )}
 
       {role === 'manager' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <DashboardCard title="Your Queue" value="Approvals" subtitle="Review direct reports' sheets" icon="⏳" />
-          <DashboardCard title="Current Phase" value="Q1" subtitle="Team check-ins in progress" icon="👥" />
+          <DashboardCard 
+            title="Current Phase" 
+            value={cycleInfo?.activePhase || 'Q1'} 
+            subtitle={cycleInfo?.activePhase === 'goal-setting' ? 'Review & approvals in progress' : `Team ${cycleInfo?.activePhase || 'Q1'} check-ins`} 
+            icon="👥" 
+          />
           <DashboardCard title="Actions" value="Review" subtitle="Approve or return goal sheets" icon="✓" />
         </div>
       )}
@@ -89,9 +105,14 @@ const Dashboard = () => {
       {role === 'admin' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <DashboardCard title="Governance" value="Admin" subtitle="Cycles, unlocks, reports" icon="🏢" />
-          <DashboardCard title="Reports" value="CSV" subtitle="Q1 achievement export" icon="📊" />
+          <DashboardCard title="Reports" value="CSV" subtitle={`${cycleInfo?.activePhase || 'Q1'} achievement export`} icon="📊" />
           <DashboardCard title="Escalations" value="Monitor" subtitle="Overdue submissions" icon="🚨" />
-          <DashboardCard title="Current Phase" value="Q1" subtitle="Performance Cycle 2025" icon="📅" />
+          <DashboardCard 
+            title="Current Phase" 
+            value={cycleInfo?.activePhase || 'Q1'} 
+            subtitle={`Performance Cycle ${cycleInfo?.year || '2025'}`} 
+            icon="📅" 
+          />
         </div>
       )}
 

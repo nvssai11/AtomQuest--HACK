@@ -512,6 +512,14 @@ tr:hover td {
   color: var(--text-primary);
   font-family: var(--font-primary);
   transition: all var(--transition-fast);
+  box-sizing: border-box;
+  font-size: 0.875rem;
+  height: 2.75rem;
+}
+
+textarea.input-field {
+  height: auto;
+  min-height: 5rem;
 }
 
 .input-field:focus {

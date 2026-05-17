@@ -5,10 +5,19 @@ const Modal = ({ open, isOpen, onClose, size = 'md', children, ariaLabelledBy, t
   const isCurrentlyOpen = open || isOpen;
 
   useEffect(() => {
-    if (!isCurrentlyOpen) return;
-    const focusable = ref.current?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') || [];
-    if (focusable.length) focusable[0].focus();
+    if (isCurrentlyOpen) {
+      const focusable = ref.current?.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') || [];
+      if (focusable.length) {
+        // Only focus if active element is outside the modal to prevent resetting cursor
+        if (!ref.current.contains(document.activeElement)) {
+          focusable[0].focus();
+        }
+      }
+    }
+  }, [isCurrentlyOpen]);
 
+  useEffect(() => {
+    if (!isCurrentlyOpen) return;
     const onKey = (e) => {
       if (e.key === 'Escape') onClose && onClose();
     };

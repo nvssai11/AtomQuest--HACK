@@ -33,15 +33,35 @@ const CheckIn = () => {
       setData(goalsRes);
       setCycleInfo(cycleRes);
 
+      const activeQ = cycleRes?.activeQuarter || 'Q1';
+      let existingCheckIn = null;
+      try {
+        const checkinRes = await api.get(`/checkins/me?quarter=${activeQ}`);
+        existingCheckIn = checkinRes;
+      } catch (err) {
+        console.error('Failed to load existing check-in', err);
+      }
+
       const initialActuals = {};
       const initialStatuses = {};
-      goalsRes.goals.forEach((goal) => {
-        initialActuals[goal.id] = '';
-        initialStatuses[goal.id] = 'on-track';
-      });
+
+      if (existingCheckIn) {
+        setSubmitted(true);
+        goalsRes.goals.forEach((goal) => {
+          const entry = existingCheckIn.entries?.find((e) => e.goalId === goal.id);
+          initialActuals[goal.id] = entry ? String(entry.actualAchievement) : '';
+          initialStatuses[goal.id] = entry ? entry.status : 'on-track';
+        });
+      } else {
+        setSubmitted(false);
+        goalsRes.goals.forEach((goal) => {
+          initialActuals[goal.id] = '';
+          initialStatuses[goal.id] = 'on-track';
+        });
+      }
+
       setActuals(initialActuals);
       setStatuses(initialStatuses);
-      setSubmitted(false);
     } catch (err) {
       setError(err.message);
       notify.error(err.message || 'Failed to load check-in data.');
@@ -146,7 +166,7 @@ const CheckIn = () => {
                         label="Actual Achievement"
                         type={goal.uom === 'timeline' ? 'date' : 'number'}
                         required
-                        disabled={!windowOpen}
+                        disabled={!windowOpen || submitted}
                         value={actuals[goal.id] || ''}
                         onChange={(e) => setActuals({ ...actuals, [goal.id]: e.target.value })}
                         className="mb-0"
@@ -156,7 +176,7 @@ const CheckIn = () => {
                       <Input
                         as="select"
                         label="Status"
-                        disabled={!windowOpen}
+                        disabled={!windowOpen || submitted}
                         value={statuses[goal.id] || 'on-track'}
                         onChange={(e) => setStatuses({ ...statuses, [goal.id]: e.target.value })}
                         className="mb-0"
@@ -173,7 +193,7 @@ const CheckIn = () => {
           )}
 
           <div className="border-t border-border-color pt-6 flex justify-end">
-            <Button variant="primary" type="submit" disabled={!windowOpen || goals.length === 0}>
+            <Button variant="primary" type="submit" disabled={!windowOpen || goals.length === 0 || submitted}>
               Submit {activeQuarter} Check-In
             </Button>
           </div>
