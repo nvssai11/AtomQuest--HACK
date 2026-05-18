@@ -75,8 +75,9 @@ const validationService = {
       totalWeightage += goal.weightage;
     }
 
-    if (totalWeightage !== 100) {
-      throw AppError.unprocessable(`Total weightage must equal exactly 100%. Current total is ${totalWeightage}%.`);
+    // Use a small tolerance to handle floating-point rounding (e.g. 33.33 * 3 = 99.99)
+    if (Math.abs(totalWeightage - 100) > 0.01) {
+      throw AppError.unprocessable(`Total weightage must equal exactly 100%. Current total is ${totalWeightage.toFixed(2)}%.`);
     }
   },
 
