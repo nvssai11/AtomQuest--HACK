@@ -24,7 +24,7 @@ const Reports = () => {
   }, [quarter]);
 
   const handleDownload = () => {
-    api.download(`/admin/reports/download?quarter=${quarter}`);
+    api.download(`/admin/reports/download?quarter=${quarter}`, `achievement-report-${quarter}.csv`);
   };
 
   return (

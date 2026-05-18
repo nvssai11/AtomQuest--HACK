@@ -46,8 +46,17 @@ const GoalSheet = () => {
 
   const fetchData = async () => {
     try {
-      const response = await api.get('/goals/me');
-      setData(response);
+      const promises = [api.get('/goals/me')];
+      if (user?.role === 'manager' || user?.role === 'admin') {
+        promises.push(api.get('/goals/share-recipients'));
+      }
+      
+      const [goalsRes, recipientsRes] = await Promise.all(promises);
+      
+      setData(goalsRes);
+      if (recipientsRes) {
+        setShareRecipients(recipientsRes || []);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -57,14 +66,6 @@ const GoalSheet = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (user?.role === 'manager' || user?.role === 'admin') {
-      api.get('/goals/share-recipients')
-        .then((recipients) => setShareRecipients(recipients || []))
-        .catch(() => setShareRecipients([]));
-    }
   }, [user?.role]);
 
   useEffect(() => {
@@ -171,6 +172,7 @@ const GoalSheet = () => {
         target: sharedGoal.uom === 'timeline' ? sharedGoal.target : sharedGoal.uom === 'zero' ? 0 : Number(sharedGoal.target),
         weightage: Number(sharedGoal.weightage),
       });
+      api.invalidateCache('/goals/share-recipients'); // Invalidate stale capacity cache
       setIsShareModalOpen(false);
       setSharedGoal({ title: '', description: '', thrustArea: 'Department KPI', uom: 'numeric-min', target: '', weightage: '', recipientIds: [] });
       fetchData();
@@ -209,8 +211,8 @@ const GoalSheet = () => {
   const { sheet, goals } = data;
   const isEditable = sheet.status === 'draft' || sheet.status === 'returned';
   const canManageOwnGoals = user?.role === 'employee' || user?.role === 'manager';
-  const totalWeightage = goals.reduce((sum, g) => sum + g.weightage, 0);
-  const remainingWeightage = Math.max(100 - totalWeightage, 0);
+  const totalWeightage = Math.round(goals.reduce((sum, g) => sum + Number(g.weightage), 0) * 100) / 100;
+  const remainingWeightage = Math.round(Math.max(100 - totalWeightage, 0) * 100) / 100;
   const weightageError = totalWeightage > 100
     ? `Reduce total weightage by ${totalWeightage - 100}% before submission.`
     : totalWeightage < 100
@@ -436,9 +438,17 @@ const GoalSheet = () => {
                 value={newGoal.weightage}
                 onChange={e => setNewGoal({...newGoal, weightage: e.target.value})}
               />
-              <p className="text-xs text-text-secondary mt-1">
-                Available: {editingGoal ? 100 - goals.filter((g) => g.id !== editingGoal.id).reduce((sum, g) => sum + g.weightage, 0) : remainingWeightage}%
+              <p className="text-xs mt-1 font-medium">
+                <span className={Number(newGoal.weightage) > (editingGoal ? Math.round((100 - goals.filter((g) => g.id !== editingGoal.id).reduce((sum, g) => sum + Number(g.weightage), 0))*100)/100 : remainingWeightage) ? 'text-danger' : 'text-text-secondary'}>
+                  Available: {editingGoal ? Math.round((100 - goals.filter((g) => g.id !== editingGoal.id).reduce((sum, g) => sum + Number(g.weightage), 0))*100)/100 : remainingWeightage}%
+                </span>
               </p>
+              {Number(newGoal.weightage) > 0 && (
+                 <p className="text-xs text-brand-600 mt-1">
+                   Total will be: {Math.round((totalWeightage - (editingGoal ? Number(editingGoal.weightage) : 0) + Number(newGoal.weightage)) * 100) / 100}%
+                   {Math.round((totalWeightage - (editingGoal ? Number(editingGoal.weightage) : 0) + Number(newGoal.weightage)) * 100) / 100 > 100 && ' (Exceeds 100%!)'}
+                 </p>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-6">

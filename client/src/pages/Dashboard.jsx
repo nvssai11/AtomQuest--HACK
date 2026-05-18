@@ -113,42 +113,37 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    const loadData = async () => {
+    if (!user) return;
+
+    const loadDashboardData = async () => {
       try {
-        const [activityData, cycleData] = await Promise.all([
+        const promises = [
           api.get('/audit/recent?limit=8'),
           api.get('/cycle/current')
-        ]);
+        ];
+        
+        if (role !== 'admin') {
+          promises.push(api.get('/goals/me'));
+        }
+
+        const [activityData, cycleData, goalsData] = await Promise.all(promises);
+        
         setActivity(activityData || []);
         setCycleInfo(cycleData);
+        if (goalsData) {
+          setGoalsData(goalsData);
+        }
       } catch (err) {
         console.error('Failed to load dashboard main stats', err);
         setActivity([]);
         setCycleInfo({ activePhase: 'Q1', year: 2025 });
       } finally {
         setActivityLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    
-    // Load Goals to calculate Circular Progress Ring
-    const loadGoals = async () => {
-      try {
-        if (role !== 'admin') {
-          const gData = await api.get('/goals/me');
-          setGoalsData(gData);
-        }
-      } catch (err) {
-        console.error('Failed to load user goals for progress stats', err);
-      } finally {
         setGoalsLoading(false);
       }
     };
-    loadGoals();
+
+    loadDashboardData();
 
     // Load mood from localStorage
     const savedMood = localStorage.getItem(`atomquest_mood_${user.id}`);

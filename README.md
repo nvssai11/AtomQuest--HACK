@@ -60,3 +60,11 @@ The application automatically seeds an in-memory database with realistic test da
 4. **Layer 4 - API Integration:** Express Controllers & Routes mapped to services.
 5. **Layer 5 - Frontend Foundation:** Vite + React Context + Fetch Wrapper.
 6. **Layer 6 - UI Pages:** Dashboard, Login, and Goal Management interfaces.
+
+## ⚡ Infrastructure & Efficiency
+
+Evaluated for production-readiness, this solution includes several infrastructure optimizations to reduce hosting costs and improve API efficiency:
+
+- **Caching Strategies**: Implemented `apicache` on the backend for read-heavy, low-mutation endpoints (Analytics, Active Cycles) to prevent redundant DB load. The frontend features an in-memory API cache (`api.js`) for session-persistent data.
+- **API Call Efficiency**: The UI implements debouncing, smart data-fetching using `Map` lookups (O(1)) in the backend, and avoids N+1 query patterns by pre-filtering in memory via the Repository pattern.
+- **Hosting Cost Awareness**: The backend uses the `compression` middleware to GZIP JSON payloads, significantly reducing egress bandwidth costs. The frontend uses manual chunking via Rollup in Vite to separate vendor libraries, enabling long-term CDN caching of heavy dependencies (React, Chart.js) and minimizing the size of frequent application updates.

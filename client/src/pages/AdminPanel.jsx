@@ -143,7 +143,7 @@ const AdminPanel = () => {
         // If the pre-flight fails, proceed anyway — don't block the download
       }
 
-      await api.download(`/admin/reports/download?quarter=${q}`);
+      await api.download(`/admin/reports/download?quarter=${q}`, `achievement-report-${q}.csv`);
       notify.success(`Successfully downloaded ${q} achievement report (CSV).`);
     } catch (err) {
       notify.error(err.message || 'Failed to download report.');

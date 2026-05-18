@@ -130,6 +130,12 @@ const CheckIn = () => {
         quarter: activeQuarter,
         entries,
       });
+
+      // ✅ Invalidate affected caches
+      api.invalidateCache(`/checkins/me?quart er=${activeQuarter}`);
+      api.invalidateCache('/checkins/team');
+      api.invalidateCache('/analytics/manager-effectiveness');
+
       setSubmitted(true);
       notify.success(`${activeQuarter} check-in submitted successfully.`);
     } catch (err) {
@@ -289,7 +295,7 @@ const CheckIn = () => {
                           label="Actual Achievement"
                           type={goal.uom === 'timeline' ? 'date' : 'number'}
                           required
-                          disabled={!windowOpen || submitted || isRecipientSharedGoal}
+                          disabled={!windowOpen || submitted}
                           value={currentActual || ''}
                           onChange={(e) => setActuals({ ...actuals, [goal.id]: e.target.value })}
                           className="mb-0"
@@ -300,7 +306,7 @@ const CheckIn = () => {
                         <Input
                           as="select"
                           label="Status"
-                          disabled={!windowOpen || submitted || isRecipientSharedGoal}
+                          disabled={!windowOpen || submitted}
                           value={statuses[goal.id] || 'on-track'}
                           onChange={(e) => setStatuses({ ...statuses, [goal.id]: e.target.value })}
                           className="mb-0"
