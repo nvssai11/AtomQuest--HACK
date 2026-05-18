@@ -60,19 +60,18 @@ const reportsService = {
    * @returns {string}
    */
   exportToCSV(data) {
-    if (!data || data.length === 0) return '';
+    // Define canonical column headers always — even when there is no data
+    const headers = data && data.length > 0
+      ? Object.keys(data[0])
+      : ['EmployeeName','Department','ThrustArea','GoalTitle','UoM','Weightage','Target','ActualAchievement','ComputedScore','Status','ManagerComment'];
 
-    // Extract headers from the first object
-    const headers = Object.keys(data[0]);
-    
-    // Create header row
+    // Header row
     const csvRows = [headers.join(',')];
 
-    // Create data rows
-    for (const row of data) {
+    // Data rows (skipped gracefully if data is empty)
+    for (const row of (data || [])) {
       const values = headers.map(header => {
         const val = row[header];
-        // Escape quotes and wrap strings in quotes to handle commas within text
         if (typeof val === 'string') {
           return `"${val.replace(/"/g, '""')}"`;
         }

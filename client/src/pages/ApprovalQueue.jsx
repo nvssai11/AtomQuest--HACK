@@ -103,10 +103,13 @@ const ApprovalQueue = () => {
         weightage: Number(goalEdits[goal.id]?.weightage),
       }));
       await api.post(`/approval/${sheetId}/approve`, { edits });
-      setSelectedSheet(null);
+      // Clear selection first so the detail panel resets visually immediately,
+      // then refresh the queue so the approved sheet disappears from the list.
+      setGoalEdits({});
       setSheetDetail(null);
-      fetchPending();
-      notify.success('Goal sheet approved.');
+      setSelectedSheet(null);
+      await fetchPending();
+      notify.success('Goal sheet approved and locked. ✅');
     } catch (err) {
       notify.error(err.message || 'Failed to approve goal sheet.');
     }
@@ -119,11 +122,13 @@ const ApprovalQueue = () => {
     }
     try {
       await api.post(`/approval/${sheetId}/return`, { comment: returnComment });
-      setSelectedSheet(null);
+      // Clear selection and refresh queue so the returned sheet disappears immediately.
+      setGoalEdits({});
       setSheetDetail(null);
+      setSelectedSheet(null);
       setReturnComment('');
-      fetchPending();
-      notify.info('Returned goal sheet with feedback.');
+      await fetchPending();
+      notify.info('Goal sheet returned with feedback.');
     } catch (err) {
       notify.error(err.message || 'Failed to return goal sheet.');
     }
@@ -138,7 +143,8 @@ const ApprovalQueue = () => {
     0,
   );
 
-  const approvalReady = !detailLoading && goals.length > 0 && editedTotalWeightage === 100;
+  // Mirror the backend's 0.01 float tolerance so the Approve button enables correctly
+  const approvalReady = !detailLoading && goals.length > 0 && Math.abs(editedTotalWeightage - 100) <= 0.01;
   const selectedStatus = selectedSheet?.status || 'submitted';
   const pendingLabel = sheets.length === 0 ? 'All clear' : `${sheets.length} pending`;
 

@@ -131,12 +131,25 @@ const AdminPanel = () => {
   const handleDownloadReport = async () => {
     try {
       const q = ['Q1', 'Q2', 'Q3', 'Q4'].includes(cycleInfo?.activePhase) ? cycleInfo.activePhase : 'Q1';
+
+      // Pre-flight: check if there is any data to download for this quarter
+      try {
+        const stats = await api.get(`/admin/reports/completion?quarter=${q}`);
+        if (stats && stats.submittedCount === 0) {
+          notify.error(`No check-in data found for ${q}. Ask employees to submit their check-ins first.`);
+          return;
+        }
+      } catch (_) {
+        // If the pre-flight fails, proceed anyway — don't block the download
+      }
+
       await api.download(`/admin/reports/download?quarter=${q}`);
-      notify.success(`Successfully downloaded ${q} compliance report.`);
+      notify.success(`Successfully downloaded ${q} achievement report (CSV).`);
     } catch (err) {
       notify.error(err.message || 'Failed to download report.');
     }
   };
+
 
   const handleUnlock = async () => {
     if (!unlockGoalId || unlockReason.length < 20) {
