@@ -5,6 +5,48 @@
 
 import store from '../store/inMemoryStore.js';
 
+// Secondary Indexes for O(1) performance
+const checkInsByEmpCycleQuarterIndex = new Map(); // employeeId:cycleId:quarter -> checkIn
+const checkInsBySheetIdIndex = new Map(); // goalSheetId -> Set of checkIns
+const selfAssessmentsByEmpCycleQuarterIndex = new Map(); // employeeId:cycleId:quarter -> assessment
+
+let lastCheckInsSize = -1;
+let lastSelfAssessmentsSize = -1;
+
+function rebuildCheckInIndexes() {
+  checkInsByEmpCycleQuarterIndex.clear();
+  checkInsBySheetIdIndex.clear();
+  selfAssessmentsByEmpCycleQuarterIndex.clear();
+
+  for (const checkIn of store.checkIns.values()) {
+    const key = `${checkIn.employeeId}:${checkIn.cycleId}:${checkIn.quarter}`;
+    checkInsByEmpCycleQuarterIndex.set(key, checkIn);
+
+    if (!checkInsBySheetIdIndex.has(checkIn.goalSheetId)) {
+      checkInsBySheetIdIndex.set(checkIn.goalSheetId, new Set());
+    }
+    checkInsBySheetIdIndex.get(checkIn.goalSheetId).add(checkIn);
+  }
+
+  for (const assessment of store.selfAssessments.values()) {
+    const key = `${assessment.employeeId}:${assessment.cycleId}:${assessment.quarter}`;
+    selfAssessmentsByEmpCycleQuarterIndex.set(key, assessment);
+  }
+
+  lastCheckInsSize = store.checkIns.size;
+  lastSelfAssessmentsSize = store.selfAssessments.size;
+}
+
+// Auto-reactive index rebuild if store collections update or reset
+function ensureCheckInIndexes() {
+  if (
+    store.checkIns.size !== lastCheckInsSize ||
+    store.selfAssessments.size !== lastSelfAssessmentsSize
+  ) {
+    rebuildCheckInIndexes();
+  }
+}
+
 const checkinRepository = {
   // ─── Check-Ins ────────────────────────────────────────────────────────────
 
@@ -25,16 +67,9 @@ const checkinRepository = {
    * @returns {Object|null}
    */
   findByEmployeeCycleAndQuarter(employeeId, cycleId, quarter) {
-    for (const checkIn of store.checkIns.values()) {
-      if (
-        checkIn.employeeId === employeeId &&
-        checkIn.cycleId === cycleId &&
-        checkIn.quarter === quarter
-      ) {
-        return checkIn;
-      }
-    }
-    return null;
+    ensureCheckInIndexes();
+    const key = `${employeeId}:${cycleId}:${quarter}`;
+    return checkInsByEmpCycleQuarterIndex.get(key) ?? null;
   },
 
   /**
@@ -43,8 +78,9 @@ const checkinRepository = {
    * @returns {Object[]}
    */
   findByGoalSheetId(goalSheetId) {
-    return Array.from(store.checkIns.values())
-      .filter((ci) => ci.goalSheetId === goalSheetId);
+    ensureCheckInIndexes();
+    const set = checkInsBySheetIdIndex.get(goalSheetId);
+    return set ? Array.from(set) : [];
   },
 
   /**
@@ -54,6 +90,7 @@ const checkinRepository = {
    */
   save(checkIn) {
     store.checkIns.set(checkIn.id, checkIn);
+    rebuildCheckInIndexes();
     return checkIn;
   },
 
@@ -66,6 +103,7 @@ const checkinRepository = {
    */
   saveSelfAssessment(assessment) {
     store.selfAssessments.set(assessment.id, assessment);
+    rebuildCheckInIndexes();
     return assessment;
   },
 
@@ -77,16 +115,17 @@ const checkinRepository = {
    * @returns {Object|null}
    */
   findSelfAssessment(employeeId, cycleId, quarter) {
-    for (const assessment of store.selfAssessments.values()) {
-      if (
-        assessment.employeeId === employeeId &&
-        assessment.cycleId === cycleId &&
-        assessment.quarter === quarter
-      ) {
-        return assessment;
-      }
-    }
-    return null;
+    ensureCheckInIndexes();
+    const key = `${employeeId}:${cycleId}:${quarter}`;
+    return selfAssessmentsByEmpCycleQuarterIndex.get(key) ?? null;
+  },
+
+  /**
+   * Find all check-ins.
+   * @returns {Object[]}
+   */
+  findAll() {
+    return Array.from(store.checkIns.values());
   }
 };
 

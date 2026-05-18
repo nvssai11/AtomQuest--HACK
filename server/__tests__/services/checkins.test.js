@@ -5,12 +5,14 @@ const checkinRepositoryMock = {
   findByEmployeeCycleAndQuarter: jest.fn(),
   findById: jest.fn(),
   save: jest.fn(),
+  findAll: jest.fn(),
 };
 
 const goalRepositoryMock = {
   findSheetByEmployeeAndCycle: jest.fn(),
   findGoalById: jest.fn(),
   findSharedLinksByMaster: jest.fn(),
+  findAllSheets: jest.fn(),
 };
 
 const cycleRepositoryMock = {
@@ -66,7 +68,9 @@ describe('CheckinsService', () => {
     jest.clearAllMocks();
     cycleRepository.findActiveCycle.mockReturnValue({ id: 'cycle-1' });
     checkinRepository.findByEmployeeCycleAndQuarter.mockReturnValue(null);
+    checkinRepository.findAll.mockReturnValue([]);
     goalRepository.findSharedLinksByMaster.mockReturnValue([]);
+    goalRepository.findAllSheets.mockReturnValue([]);
     userRepository.findById.mockReturnValue({ id: 'usr-1', managerId: 'usr-2' });
   });
 
@@ -101,8 +105,10 @@ describe('CheckinsService', () => {
       checkinWindowService.validateCheckinWindow.mockImplementation(() => {}); // Pass
       goalRepository.findSheetByEmployeeAndCycle.mockReturnValue({ id: 'sheet-1', status: 'draft' });
 
-      expect(() => checkinsService.submitCheckIn(mockEmployee, { quarter: 'Q1', entries: [] }))
-        .toThrow(AppError);
+      expect(() => checkinsService.submitCheckIn(mockEmployee, {
+        quarter: 'Q1',
+        entries: [{ goalId: 'goal-1', actualAchievement: 80, status: 'on-track' }]
+      })).toThrow(AppError);
     });
   });
 

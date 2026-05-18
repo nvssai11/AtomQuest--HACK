@@ -15,6 +15,20 @@ describe('Approval flow (integration)', () => {
 
   beforeAll(async () => {
     await seedStore();
+    
+    // Set the cycle phase to 'approval' so approvals are valid during integration tests
+    const activeCycle = store.cycles.get(SEED_IDS.cycles.year2025);
+    if (activeCycle) {
+      activeCycle.activePhase = 'approval';
+      if (activeCycle.phases['approval']) {
+        activeCycle.phases['approval'].status = 'active';
+      }
+      if (activeCycle.phases['Q1']) {
+        activeCycle.phases['Q1'].status = 'upcoming';
+      }
+      store.cycles.set(activeCycle.id, activeCycle);
+    }
+
     const managerLogin = await authService.login('john.dsouza@atomquest.com', 'Manager@123');
     const employeeLogin = await authService.login('raj.patel@atomquest.com', 'Employee@123');
     managerToken = managerLogin.token;

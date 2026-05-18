@@ -14,6 +14,11 @@ const userRepositoryMock = {
   getHierarchy: jest.fn(),
 };
 
+const cycleRepositoryMock = {
+  findActiveCycle: jest.fn(),
+  save: jest.fn(),
+};
+
 jest.unstable_mockModule('../../src/repository/goalRepository.js', () => ({
   default: goalRepositoryMock,
 }));
@@ -22,9 +27,14 @@ jest.unstable_mockModule('../../src/repository/userRepository.js', () => ({
   default: userRepositoryMock,
 }));
 
+jest.unstable_mockModule('../../src/repository/cycleRepository.js', () => ({
+  default: cycleRepositoryMock,
+}));
+
 const { default: approvalService } = await import('../../src/services/approvalService.js');
 const { default: goalRepository } = await import('../../src/repository/goalRepository.js');
 const { default: userRepository } = await import('../../src/repository/userRepository.js');
+const { default: cycleRepository } = await import('../../src/repository/cycleRepository.js');
 
 describe('ApprovalService', () => {
   const managerId = 'mgr-1';
@@ -32,6 +42,16 @@ describe('ApprovalService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Default active cycle for tests
+    cycleRepository.findActiveCycle.mockReturnValue({
+      id: 'cycle-2025',
+      activePhase: 'approval',
+      phases: {
+        'goal-setting': { status: 'closed' },
+        'approval': { status: 'active' },
+      },
+    });
   });
 
   describe('getPendingApprovals', () => {
@@ -150,6 +170,25 @@ describe('ApprovalService', () => {
       userRepository.getHierarchy.mockReturnValue({ managerId });
 
       expect(() => approvalService.approveSheet('gs-1', managerId)).toThrow(AppError);
+    });
+
+    it('rejects when active cycle phase is not approval', () => {
+      cycleRepository.findActiveCycle.mockReturnValue({
+        id: 'cycle-2025',
+        activePhase: 'goal-setting',
+      });
+      goalRepository.findSheetById.mockReturnValue({
+        id: 'gs-1',
+        employeeId,
+        status: 'submitted',
+      });
+      userRepository.getHierarchy.mockReturnValue({ managerId });
+
+      expect(() => approvalService.approveSheet('gs-1', managerId)).toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining('Cannot approve goals outside approval phase')
+        })
+      );
     });
   });
 });

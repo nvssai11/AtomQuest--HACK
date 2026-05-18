@@ -5,6 +5,63 @@
 
 import store from '../store/inMemoryStore.js';
 
+// Secondary Indexes for O(1) performance
+const sheetsByEmpAndCycleIndex = new Map(); // employeeId:cycleId -> sheet
+const sheetsByEmployeeIndex = new Map(); // employeeId -> Set of sheets
+const goalsBySheetIdIndex = new Map(); // sheetId -> Set of goals
+const sharedLinksByMasterIndex = new Map(); // masterGoalId -> Set of links
+const sharedLinkByRecipientGoalIndex = new Map(); // recipientGoalId -> link
+
+let lastSheetsSize = -1;
+let lastGoalsSize = -1;
+let lastLinksSize = -1;
+
+function rebuildGoalIndexes() {
+  sheetsByEmpAndCycleIndex.clear();
+  sheetsByEmployeeIndex.clear();
+  goalsBySheetIdIndex.clear();
+  sharedLinksByMasterIndex.clear();
+  sharedLinkByRecipientGoalIndex.clear();
+
+  for (const sheet of store.goalSheets.values()) {
+    sheetsByEmpAndCycleIndex.set(`${sheet.employeeId}:${sheet.cycleId}`, sheet);
+    if (!sheetsByEmployeeIndex.has(sheet.employeeId)) {
+      sheetsByEmployeeIndex.set(sheet.employeeId, new Set());
+    }
+    sheetsByEmployeeIndex.get(sheet.employeeId).add(sheet);
+  }
+
+  for (const goal of store.goals.values()) {
+    if (!goalsBySheetIdIndex.has(goal.goalSheetId)) {
+      goalsBySheetIdIndex.set(goal.goalSheetId, new Set());
+    }
+    goalsBySheetIdIndex.get(goal.goalSheetId).add(goal);
+  }
+
+  for (const link of store.sharedGoalLinks.values()) {
+    if (!sharedLinksByMasterIndex.has(link.masterGoalId)) {
+      sharedLinksByMasterIndex.set(link.masterGoalId, new Set());
+    }
+    sharedLinksByMasterIndex.get(link.masterGoalId).add(link);
+    sharedLinkByRecipientGoalIndex.set(link.recipientGoalId, link);
+  }
+
+  lastSheetsSize = store.goalSheets.size;
+  lastGoalsSize = store.goals.size;
+  lastLinksSize = store.sharedGoalLinks.size;
+}
+
+// Auto-reactive index rebuild if store collections update or reset
+function ensureGoalIndexes() {
+  if (
+    store.goalSheets.size !== lastSheetsSize ||
+    store.goals.size !== lastGoalsSize ||
+    store.sharedGoalLinks.size !== lastLinksSize
+  ) {
+    rebuildGoalIndexes();
+  }
+}
+
 const goalRepository = {
   // ─── Goal Sheets ────────────────────────────────────────────────────────
   
@@ -24,12 +81,8 @@ const goalRepository = {
    * @returns {Object|null}
    */
   findSheetByEmployeeAndCycle(employeeId, cycleId) {
-    for (const sheet of store.goalSheets.values()) {
-      if (sheet.employeeId === employeeId && sheet.cycleId === cycleId) {
-        return sheet;
-      }
-    }
-    return null;
+    ensureGoalIndexes();
+    return sheetsByEmpAndCycleIndex.get(`${employeeId}:${cycleId}`) ?? null;
   },
 
   /**
@@ -39,6 +92,7 @@ const goalRepository = {
    */
   saveSheet(sheet) {
     store.goalSheets.set(sheet.id, sheet);
+    rebuildGoalIndexes();
     return sheet;
   },
 
@@ -49,12 +103,19 @@ const goalRepository = {
    * @returns {Object[]}
    */
   findSheetsByEmployeeIds(employeeIds, status = null) {
-    const idSet = new Set(employeeIds);
-    return Array.from(store.goalSheets.values()).filter((sheet) => {
-      if (!idSet.has(sheet.employeeId)) return false;
-      if (status && sheet.status !== status) return false;
-      return true;
-    });
+    ensureGoalIndexes();
+    const results = [];
+    for (const empId of employeeIds) {
+      const sheets = sheetsByEmployeeIndex.get(empId);
+      if (sheets) {
+        sheets.forEach(sheet => {
+          if (!status || sheet.status === status) {
+            results.push(sheet);
+          }
+        });
+      }
+    }
+    return results;
   },
 
   // ─── Goals ──────────────────────────────────────────────────────────────
@@ -74,10 +135,11 @@ const goalRepository = {
    * @returns {Object[]}
    */
   findGoalsBySheetId(sheetId) {
-    return Array.from(store.goals.values())
-      .filter((g) => g.goalSheetId === sheetId)
-      // Sort by creation time to maintain consistent order
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    ensureGoalIndexes();
+    const set = goalsBySheetIdIndex.get(sheetId);
+    const goals = set ? Array.from(set) : [];
+    // Sort by creation time to maintain consistent order
+    return goals.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   },
 
   /**
@@ -87,6 +149,7 @@ const goalRepository = {
    */
   saveGoal(goal) {
     store.goals.set(goal.id, goal);
+    rebuildGoalIndexes();
     return goal;
   },
 
@@ -96,20 +159,22 @@ const goalRepository = {
    * @returns {boolean} True if deleted, false if it didn't exist
    */
   deleteGoal(goalId) {
-    return store.goals.delete(goalId);
+    const deleted = store.goals.delete(goalId);
+    if (deleted) rebuildGoalIndexes();
+    return deleted;
   },
 
   // ─── Shared Goal Links ──────────────────────────────────────────────────
 
   /**
    * Find all shared goal links where a given goal is the master.
-   * Used when updating achievements on a shared departmental KPI to sync down.
    * @param {string} masterGoalId 
    * @returns {Object[]}
    */
   findSharedLinksByMaster(masterGoalId) {
-    return Array.from(store.sharedGoalLinks.values())
-      .filter((link) => link.masterGoalId === masterGoalId);
+    ensureGoalIndexes();
+    const set = sharedLinksByMasterIndex.get(masterGoalId);
+    return set ? Array.from(set) : [];
   },
 
   /**
@@ -118,10 +183,8 @@ const goalRepository = {
    * @returns {Object|null}
    */
   findSharedLinkByRecipientGoal(recipientGoalId) {
-    for (const link of store.sharedGoalLinks.values()) {
-      if (link.recipientGoalId === recipientGoalId) return link;
-    }
-    return null;
+    ensureGoalIndexes();
+    return sharedLinkByRecipientGoalIndex.get(recipientGoalId) ?? null;
   },
 
   /**
@@ -131,7 +194,26 @@ const goalRepository = {
    */
   saveSharedLink(link) {
     store.sharedGoalLinks.set(link.id, link);
+    rebuildGoalIndexes();
     return link;
+  },
+
+  // ─── Bulk Queries for Optimization ──────────────────────────────────────
+
+  /**
+   * Find all goal sheets in the store.
+   * @returns {Object[]}
+   */
+  findAllSheets() {
+    return Array.from(store.goalSheets.values());
+  },
+
+  /**
+   * Find all goals in the store.
+   * @returns {Object[]}
+   */
+  findAllGoals() {
+    return Array.from(store.goals.values());
   }
 };
 

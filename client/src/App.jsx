@@ -31,18 +31,17 @@ const App = () => {
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-            {/* Dashboard is accessible by all authenticated users */}
+            {/* Routes accessible by all authenticated users */}
             <Route path="/" element={<Dashboard />} />
+            <Route path="/goals" element={<GoalSheet />} />
             
             {/* Employee Routes */}
             <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
-              <Route path="/goals" element={<GoalSheet />} />
               <Route path="/checkin" element={<CheckIn />} />
             </Route>
 
             {/* Manager Routes */}
             <Route element={<ProtectedRoute allowedRoles={['manager']} />}>
-              <Route path="/goals" element={<GoalSheet />} />
               <Route path="/approvals" element={<ApprovalQueue />} />
               <Route path="/team-checkin" element={<TeamCheckIn />} />
             </Route>
@@ -50,7 +49,6 @@ const App = () => {
             {/* Admin Routes */}
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
               <Route path="/admin" element={<AdminPanel />} />
-              <Route path="/goals" element={<GoalSheet />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/analytics" element={<Analytics />} />
             </Route>
