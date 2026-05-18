@@ -128,8 +128,14 @@ const AdminPanel = () => {
     }
   };
 
-  const handleDownloadReport = () => {
-    api.download(`/admin/reports/download?quarter=${cycleInfo?.activeQuarter || 'Q1'}`);
+  const handleDownloadReport = async () => {
+    try {
+      const q = ['Q1', 'Q2', 'Q3', 'Q4'].includes(cycleInfo?.activePhase) ? cycleInfo.activePhase : 'Q1';
+      await api.download(`/admin/reports/download?quarter=${q}`);
+      notify.success(`Successfully downloaded ${q} compliance report.`);
+    } catch (err) {
+      notify.error(err.message || 'Failed to download report.');
+    }
   };
 
   const handleUnlock = async () => {
@@ -177,19 +183,27 @@ const AdminPanel = () => {
 
   return (
     <Layout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-primary mb-2">Admin Governance</h1>
-        <p className="text-text-secondary">
-          Manage system cycles, resolve escalations, and download compliance reports.
-        </p>
+      <div className="mb-8 p-6 bg-gradient-to-r from-brand-900 to-slate-900 rounded-2xl shadow-xl text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="relative z-10">
+          <h1 className="text-3xl font-extrabold mb-2 flex items-center gap-3">
+            <span className="bg-white/20 p-2 rounded-lg backdrop-blur-md">👑</span> 
+            Admin Governance Platform
+          </h1>
+          <p className="text-brand-100 max-w-2xl text-sm leading-relaxed">
+            Centralized command center for system cycles, exception handling, and compliance reporting. All actions performed here are etched into the immutable audit ledger.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Cycle Management Card */}
-        <Card>
+        <Card className="hover:shadow-glow transition-all duration-300 border border-brand-100/50">
           <div className="flex justify-between items-start mb-6">
-            <h2 className="text-lg font-bold">Cycle Management</h2>
-            <Badge variant="success">Active</Badge>
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <span className="text-xl">⚙️</span> Cycle Management
+            </h2>
+            <Badge variant="brand" className="animate-pulse">Active</Badge>
           </div>
           
           <div className="space-y-4">
@@ -209,20 +223,24 @@ const AdminPanel = () => {
             </div>
             
             <div className="pt-4 border-t border-border-color">
-              <h3 className="text-sm font-semibold mb-2">Compliance Reports</h3>
-              <p className="text-xs text-text-secondary mb-3">Download full CSV reports of goal achievements and UoM scoring.</p>
-              <Button variant="secondary" onClick={handleDownloadReport} className="w-full justify-center">
-                Download Q1 Achievement Report (CSV)
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <span>📊</span> Compliance Reports
+              </h3>
+              <p className="text-xs text-text-secondary mb-4">Download full CSV reports of goal achievements and UoM scoring.</p>
+              <Button variant="primary" onClick={handleDownloadReport} className="w-full justify-center shadow-md">
+                Download {['Q1', 'Q2', 'Q3', 'Q4'].includes(cycleInfo?.activePhase) ? cycleInfo.activePhase : 'Q1'} Achievement Report (CSV)
               </Button>
             </div>
           </div>
         </Card>
 
         {/* Audit & Overrides Card */}
-        <Card>
+        <Card className="hover:shadow-glow transition-all duration-300 border border-warning/20">
           <div className="flex justify-between items-start mb-6">
-            <h2 className="text-lg font-bold">Audit & Overrides</h2>
-            <Badge variant="warning">Restricted</Badge>
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <span className="text-xl">🔓</span> Audit & Overrides
+            </h2>
+            <Badge variant="warning" className="bg-warning/10 text-warning border border-warning/20">Restricted</Badge>
           </div>
           
           <p className="text-xs text-text-secondary mb-4">
@@ -250,11 +268,13 @@ const AdminPanel = () => {
         </Card>
       </div>
 
-      <Card className="mb-8">
+      <Card className="mb-8 border border-border-color/50 shadow-sm">
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <div>
-            <h2 className="text-xl font-bold text-text-primary">Org Hierarchy Visualization</h2>
-            <p className="text-xs text-text-secondary">Reporting lines derived from employee managerId</p>
+            <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+              <span className="text-2xl">🏢</span> Org Hierarchy Visualization
+            </h2>
+            <p className="text-xs text-text-secondary mt-1">Interactive reporting lines derived from manager mapping</p>
           </div>
           <div className="flex border border-border-color rounded-lg overflow-hidden bg-bg-secondary p-1">
             <button
@@ -304,8 +324,10 @@ const AdminPanel = () => {
         )}
       </Card>
 
-      <Card className="mb-8">
-        <h2 className="text-lg font-bold mb-4">Immutable Audit Trail</h2>
+      <Card className="mb-8 border border-border-color/50">
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <span className="text-xl">📜</span> Immutable Audit Trail
+        </h2>
         {auditLog.length === 0 ? (
           <EmptyState icon="📜" title="No audit logs" description="No actions have been recorded yet." className="min-h-[150px]" />
         ) : (
@@ -321,11 +343,14 @@ const AdminPanel = () => {
       </Card>
 
       {/* Escalation Engine */}
-      <Card className="border-t-4 border-t-danger">
-        <div className="flex justify-between items-center mb-6">
+      <Card className="border-t-4 border-t-danger shadow-md relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-danger rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
+        <div className="flex justify-between items-center mb-6 relative z-10">
           <div>
-            <h2 className="text-lg font-bold">Escalation Engine</h2>
-            <p className="text-xs text-text-secondary">System-generated escalations for overdue submissions and approvals.</p>
+            <h2 className="text-lg font-bold flex items-center gap-2 text-danger">
+              <span className="text-xl">🚨</span> Escalation Engine
+            </h2>
+            <p className="text-xs text-text-secondary mt-1">System-generated escalations for overdue submissions and approvals.</p>
           </div>
           <Button 
             variant="secondary"

@@ -82,12 +82,12 @@ const TeamCheckIn = () => {
                   <h2 className="text-xl font-bold text-text-primary">{employee.name}</h2>
                   <p className="text-sm text-text-secondary mt-1">{employee.department} • Sheet: <span className="font-medium text-text-primary">{sheet?.status || 'n/a'}</span></p>
                 </div>
-                <Badge variant={checkIn ? 'success' : 'warning'}>
-                  {checkIn ? `${quarter} Submitted` : 'Pending'}
+                <Badge variant={checkIn?.submittedAt ? 'success' : 'warning'}>
+                  {checkIn?.submittedAt ? `${quarter} Submitted` : 'Pending'}
                 </Badge>
               </div>
 
-              {!checkIn ? (
+              {!checkIn?.submittedAt ? (
                 <EmptyState icon="⏳" title="Pending Submission" description={`No check-in submitted for ${quarter} yet.`} className="min-h-[150px]" />
               ) : (
                 <>
@@ -100,7 +100,7 @@ const TeamCheckIn = () => {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-bg-primary p-3 rounded-lg border border-border-color">
                             <div>
                               <p className="text-xs text-text-secondary mb-1">Target</p>
-                              <p className="font-semibold">{goal.target} {goal.targetUnit}</p>
+                              <p className="font-semibold">{goal.target} {goal.uom}</p>
                             </div>
                             <div>
                               <p className="text-xs text-text-secondary mb-1">Actual</p>

@@ -95,7 +95,11 @@ export const api = {
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    
+    // Slight delay is required so the browser doesn't cancel the download by revoking the URL too fast
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }, 100);
   }
 };

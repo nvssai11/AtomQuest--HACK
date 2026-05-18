@@ -1,25 +1,160 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const Header = () => {
   const { user, logout } = useAuth();
+  const [isDark, setIsDark] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  // Initialize theme from document element
+  useEffect(() => {
+    const activeTheme = document.documentElement.getAttribute('data-theme');
+    setIsDark(activeTheme === 'dark');
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    setIsDark(!isDark);
+  };
+
+  const notifications = [
+    { id: 1, type: 'alert', text: '⚠️ Submission pending for Q1 actual achievements.' },
+    { id: 2, type: 'goal', text: '🎯 Shared Sales Department target pushed by John D\'Souza.' },
+    { id: 3, type: 'success', text: '🎉 Manager John D\'Souza approved your goal sheet revisions.' },
+  ];
 
   return (
-    <header className="h-16 border-b border-border-color bg-bg-secondary flex items-center justify-between px-6 sticky top-0 z-10" style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--bg-glass)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)' }}>
-      <h1 className="font-extrabold text-base tracking-tight" style={{ color: 'var(--text-primary)', margin: 0 }}>
-        AtomQuest Portal
-      </h1>
+    <header 
+      className="h-16 border-b border-border-color flex items-center justify-between px-6 sticky top-0 z-30" 
+      style={{ 
+        borderBottom: '1px solid var(--border-color)', 
+        background: 'var(--bg-glass)', 
+        backdropFilter: 'var(--glass-blur)', 
+        WebkitBackdropFilter: 'var(--glass-blur)' 
+      }}
+    >
+      <div className="flex items-center gap-6">
+        <h1 className="font-extrabold text-lg tracking-tight m-0" style={{ color: 'var(--text-primary)' }}>
+          AtomQuest Portal
+        </h1>
+        
+        {/* Polished Corporate Search Bar */}
+        <div className="hidden md:flex items-center relative">
+          <span className="absolute left-3 text-text-secondary text-sm">🔍</span>
+          <input 
+            type="text" 
+            placeholder="Search goals, KPIs, actions, team members..." 
+            className="input-field mb-0 pl-9 pr-4 text-xs"
+            style={{ 
+              width: '280px', 
+              height: '2.1rem', 
+              borderRadius: '9999px',
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)'
+            }}
+            disabled
+          />
+        </div>
+      </div>
       
-      <div className="flex items-center gap-4 ml-auto">
+      <div className="flex items-center gap-4 ml-auto relative">
+        {/* Theme Switcher Button */}
+        <button
+          onClick={toggleTheme}
+          className="w-8 h-8 rounded-lg flex items-center justify-center border border-border-color transition-all duration-200"
+          style={{
+            background: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+            fontSize: '1rem'
+          }}
+          title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          aria-label="Toggle Theme"
+        >
+          {isDark ? '☀️' : '🌙'}
+        </button>
+
+        {/* Notifications Icon with Glow Badge */}
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center border border-border-color transition-all duration-200 relative"
+            style={{
+              background: 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+              fontSize: '1.05rem'
+            }}
+            title="Notifications"
+            aria-label="View Notifications"
+          >
+            <span>🔔</span>
+            <span 
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-bold flex items-center justify-center animate-pulse"
+              style={{
+                boxShadow: '0 0 8px var(--danger)'
+              }}
+            >
+              {notifications.length}
+            </span>
+          </button>
+
+          {/* Interactive Glassmorphism Notification Tray */}
+          {showNotifications && (
+            <>
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setShowNotifications(false)}
+              ></div>
+              <div 
+                className="absolute right-0 mt-2 w-72 rounded-xl border border-border-color p-3 z-50 animate-fade-in"
+                style={{
+                  background: 'var(--bg-glass)',
+                  backdropFilter: 'var(--glass-blur)',
+                  WebkitBackdropFilter: 'var(--glass-blur)',
+                  boxShadow: 'var(--shadow-lg)'
+                }}
+              >
+                <div className="flex items-center justify-between border-b border-border-color pb-2 mb-2">
+                  <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider m-0">System Notifications</h4>
+                  <button 
+                    className="text-[10px] text-brand-600 hover:underline font-bold bg-transparent border-none cursor-pointer"
+                    onClick={() => setShowNotifications(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {notifications.map((n) => (
+                    <div 
+                      key={n.id} 
+                      className="p-2 rounded-lg text-xs leading-normal border border-border-color transition-colors"
+                      style={{
+                        background: 'var(--bg-primary)',
+                        color: 'var(--text-primary)'
+                      }}
+                    >
+                      {n.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* User Info Capsule */}
         <div className="text-right hidden sm:block">
-          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)', margin: 0 }}>{user?.name}</p>
-          <p className="text-xs capitalize" style={{ color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
-            {user?.role} • {user?.department || 'Operations'}
+          <p className="text-sm font-semibold m-0" style={{ color: 'var(--text-primary)' }}>{user?.name}</p>
+          <p className="text-xs capitalize m-0 mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            {user?.role} • {user?.department || 'Sales'}
           </p>
         </div>
         
+        {/* Glowing Initials Avatar */}
         <div 
-          className="w-9 h-9 rounded-full bg-brand-gradient flex items-center justify-center font-bold border border-white/10 shadow-sm"
+          className="w-9 h-9 rounded-full bg-brand-gradient flex items-center justify-center font-bold border border-white/10 shadow-sm transition-transform duration-200 hover:scale-105"
           style={{ color: '#ffffff' }}
         >
           {user?.name?.charAt(0) || 'U'}
@@ -27,7 +162,7 @@ const Header = () => {
         
         <button
           onClick={logout}
-          className="ml-2 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+          className="ml-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 hover:brightness-105 active:scale-95"
           style={{
             background: 'rgba(239, 68, 68, 0.1)',
             border: '1px solid rgba(239, 68, 68, 0.2)',
