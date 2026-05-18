@@ -58,6 +58,24 @@ const checkinsService = {
         throw AppError.badRequest(`Goal ${entry.goalId} does not belong to your sheet`);
       }
 
+      if (goal.isShared && goal.primaryOwnerId !== user.id) {
+        const existingEntry = checkIn?.entries?.find((e) => e.goalId === goal.id);
+        const actualValue = existingEntry ? existingEntry.actualAchievement : '';
+        const statusValue = existingEntry ? existingEntry.status : 'not-started';
+        const computedScore = scoringService.calculateScore(
+          goal.uom,
+          actualValue,
+          goal.target
+        );
+
+        return {
+          goalId: entry.goalId,
+          actualAchievement: actualValue,
+          status: statusValue,
+          computedScore,
+        };
+      }
+
       const computedScore = scoringService.calculateScore(
         goal.uom,
         entry.actualAchievement,

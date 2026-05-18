@@ -4,6 +4,73 @@ import { api } from '../api';
 import { useNotification } from '../context/NotificationContext.jsx';
 import { Button, Card, Badge, Table, Input, LoadingSpinner, EmptyState } from '../components/primitives';
 
+const buildTree = (users) => {
+  const map = {};
+  users.forEach((u) => {
+    map[u.userId] = { ...u, children: [] };
+  });
+  const roots = [];
+  users.forEach((u) => {
+    if (u.managerId && map[u.managerId]) {
+      map[u.managerId].children.push(map[u.userId]);
+    } else {
+      roots.push(map[u.userId]);
+    }
+  });
+  return roots;
+};
+
+const TreeNode = ({ node }) => {
+  const [isOpen, setIsOpen] = useState(true);
+  return (
+    <div className="flex flex-col items-center">
+      {/* Node Card */}
+      <div className="flex flex-col items-center bg-bg-primary border border-border-color rounded-xl p-4 shadow-sm w-48 text-center relative hover:border-brand-500 hover:shadow-md transition-all duration-300">
+        <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-600 font-bold flex items-center justify-center text-lg mb-2">
+          {node.user?.name?.charAt(0) || '?'}
+        </div>
+        <h4 className="font-bold text-text-primary text-sm truncate w-full">{node.user?.name}</h4>
+        <p className="text-xs text-text-secondary capitalize mb-1">{node.user?.role}</p>
+        <Badge variant={node.user?.role === 'manager' ? 'brand' : 'secondary'} className="text-[10px] py-0 px-2 mt-1">
+          {node.department || 'General'}
+        </Badge>
+        {node.children.length > 0 && (
+          <button 
+            type="button"
+            onClick={() => setIsOpen(!isOpen)}
+            className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-bg-secondary border border-border-color flex items-center justify-center hover:bg-bg-hover transition-colors text-xs font-bold text-text-primary shadow-sm"
+          >
+            {isOpen ? '−' : '+'}
+          </button>
+        )}
+      </div>
+
+      {/* Children Connector Lines */}
+      {node.children.length > 0 && isOpen && (
+        <div className="flex flex-col items-center mt-6 w-full relative">
+          {/* Vertical Line down from parent */}
+          <div className="absolute top-[-24px] left-1/2 w-[2px] h-[24px] bg-border-color"></div>
+          
+          {/* Horizontal connection line for multiple siblings */}
+          {node.children.length > 1 && (
+            <div className="absolute top-0 left-[calc(100%/12)] right-[calc(100%/12)] h-[2px] bg-border-color"></div>
+          )}
+
+          <div className="flex justify-center gap-8 w-full pt-4">
+            {node.children.map((child) => (
+              <div key={child.userId} className="relative flex justify-center pt-2">
+                {/* Vertical Line up to sibling connection line */}
+                <div className="absolute top-[-16px] left-1/2 -translate-x-1/2 w-[2px] h-[16px] bg-border-color"></div>
+                <TreeNode node={child} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AdminPanel = () => {
   const [escalations, setEscalations] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
@@ -15,6 +82,7 @@ const AdminPanel = () => {
   const [unlockGoalId, setUnlockGoalId] = useState('');
   const [unlockReason, setUnlockReason] = useState('');
   const [nextPhase, setNextPhase] = useState('Q2');
+  const [activeTab, setActiveTab] = useState('chart');
 
   const fetchEscalations = async () => {
     try {
@@ -183,19 +251,57 @@ const AdminPanel = () => {
       </div>
 
       <Card className="mb-8">
-        <h2 className="text-lg font-bold mb-4">Org Hierarchy (managerId on user)</h2>
-        <Table 
-          columns={hierarchyColumns}
-          data={hierarchy}
-          renderRow={(h) => (
-            <tr key={h.userId}>
-              <td>{h.user?.name}</td>
-              <td>{h.user?.role}</td>
-              <td className="text-xs font-mono">{h.managerId || '—'}</td>
-              <td>{h.department}</td>
-            </tr>
-          )}
-        />
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-text-primary">Org Hierarchy Visualization</h2>
+            <p className="text-xs text-text-secondary">Reporting lines derived from employee managerId</p>
+          </div>
+          <div className="flex border border-border-color rounded-lg overflow-hidden bg-bg-secondary p-1">
+            <button
+              onClick={() => setActiveTab('chart')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                activeTab === 'chart'
+                  ? 'bg-brand-500 text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Interactive Tree
+            </button>
+            <button
+              onClick={() => setActiveTab('table')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                activeTab === 'table'
+                  ? 'bg-brand-500 text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Tabular Grid
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'chart' ? (
+          <div className="w-full overflow-x-auto pb-8 pt-4 flex justify-center bg-bg-secondary rounded-xl border border-border-color min-h-[400px]">
+            <div className="flex gap-16 justify-center p-4">
+              {buildTree(hierarchy).map((root) => (
+                <TreeNode key={root.userId} node={root} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <Table 
+            columns={hierarchyColumns}
+            data={hierarchy}
+            renderRow={(h) => (
+              <tr key={h.userId}>
+                <td>{h.user?.name}</td>
+                <td>{h.user?.role}</td>
+                <td className="text-xs font-mono">{h.managerId || '—'}</td>
+                <td>{h.department}</td>
+              </tr>
+            )}
+          />
+        )}
       </Card>
 
       <Card className="mb-8">
