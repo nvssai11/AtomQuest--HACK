@@ -515,7 +515,7 @@ export async function seedStore() {
     goalSheetId: SEED_IDS.goalSheets.sarah2025,
     quarter: 'Q1',
     cycleId: SEED_IDS.cycles.year2025,
-    submittedAt: '2025-07-15T10:00:00.000Z',
+    submittedAt: null,
     managerComment: null,
     managerCommentAt: null,
     commentBy: null,

@@ -10,6 +10,7 @@ const goalRepositoryMock = {
 };
 
 const userRepositoryMock = {
+  findById: jest.fn(),
   findDirectReports: jest.fn(),
   getHierarchy: jest.fn(),
 };
