@@ -17,7 +17,7 @@ import adminRoutes from './routes/admin.js';
 import analyticsRoutes from './routes/analytics.js';
 import auditRoutes from './routes/audit.js';
 import cycleRoutes from './routes/cycle.js';
-import notificationsRoutes from './routes/notifications.js';
+// import notificationsRoutes from './routes/notifications.js';
 
 const app = express();
 
