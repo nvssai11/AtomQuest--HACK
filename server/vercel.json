@@ -1,0 +1,16 @@
+{
+  "version": 3,
+  "installCommand": "cd .. && npm install --workspace=server",
+  "builds": [
+    {
+      "src": "src/app.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "src/app.js"
+    }
+  ]
+}
