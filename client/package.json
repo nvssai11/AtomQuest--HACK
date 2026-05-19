@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@azure/msal-browser": "^3.14.0",
-    "@esbuild/win32-x64": "^0.28.0",
     "chart.js": "^4.4.3",
     "esbuild": "^0.27.7",
     "react": "^18.3.1",
