@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 
 import config from './config.js';
 import requestLogger from './middleware/requestLogger.js';
@@ -16,14 +17,17 @@ import adminRoutes from './routes/admin.js';
 import analyticsRoutes from './routes/analytics.js';
 import auditRoutes from './routes/audit.js';
 import cycleRoutes from './routes/cycle.js';
+import notificationsRoutes from './routes/notifications.js';
 
 const app = express();
 
-// 1. Security Middleware
+// 1. Security & Performance Middleware
 app.use(helmet());
+app.use(compression());
 app.use(cors({
   origin: config.server.corsOrigins,
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['Content-Disposition']
 }));
 
 // 2. Rate Limiting (Basic DDoS protection)
@@ -50,6 +54,7 @@ apiRouter.use('/admin', adminRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/audit', auditRoutes);
 apiRouter.use('/cycle', cycleRoutes);
+apiRouter.use('/notifications', notificationsRoutes);
 
 // Health check endpoint for Render/Kubernetes
 apiRouter.get('/health', (req, res) => {
@@ -57,6 +62,16 @@ apiRouter.get('/health', (req, res) => {
 });
 
 app.use('/api/v1', apiRouter);
+
+// Root landing endpoint for deployments and basic health checks
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'UP',
+    service: 'AtomQuest Server',
+    apiBase: '/api/v1',
+    healthEndpoint: '/api/v1/health',
+  });
+});
 
 // 5. Global Error Handling (Must be last middleware)
 app.use(errorHandler);
