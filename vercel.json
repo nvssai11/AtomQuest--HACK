@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "installCommand": "npm install",
   "builds": [
     {
       "src": "client/package.json",
@@ -10,21 +9,18 @@
       }
     },
     {
-      "src": "server/src/app.js",
+      "src": "server/src/index.js",
       "use": "@vercel/node"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "^/api/(.*)$",
-      "dest": "server/src/app.js"
+      "source": "/api/(.*)",
+      "destination": "/server/src/index.js"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "^/(.*)$",
-      "dest": "client/dist/index.html"
+      "source": "/(.*)",
+      "destination": "/client/dist/index.html"
     }
   ]
 }

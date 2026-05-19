@@ -83,12 +83,13 @@ const TreeNode = ({ node }) => {
           <div 
             className="absolute"
             style={{ 
-              backgroundColor: 'var(--border-color)',
+              backgroundColor: 'var(--brand-500)',
               width: '2px',
               height: '24px',
               top: '-24px',
               left: '50%',
-              transform: 'translateX(-50%)'
+              transform: 'translateX(-50%)',
+              zIndex: 10
             }}
           ></div>
           
@@ -97,11 +98,12 @@ const TreeNode = ({ node }) => {
             <div 
               className="absolute"
               style={{ 
-                backgroundColor: 'var(--border-color)',
+                backgroundColor: 'var(--brand-500)',
                 height: '2px',
                 top: '0',
                 left: '96px',
-                right: '96px'
+                width: 'calc(100% - 192px)',
+                zIndex: 10
               }}
             ></div>
           )}
@@ -129,12 +131,13 @@ const TreeNode = ({ node }) => {
                 <div 
                   className="absolute"
                   style={{ 
-                    backgroundColor: 'var(--border-color)',
+                    backgroundColor: 'var(--brand-500)',
                     width: '2px',
                     height: '16px',
                     top: '-16px',
                     left: '50%',
-                    transform: 'translateX(-50%)'
+                    transform: 'translateX(-50%)',
+                    zIndex: 10
                   }}
                 ></div>
                 <TreeNode node={child} />
