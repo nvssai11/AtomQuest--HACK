@@ -54,7 +54,7 @@ apiRouter.use('/admin', adminRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/audit', auditRoutes);
 apiRouter.use('/cycle', cycleRoutes);
-apiRouter.use('/notifications', notificationsRoutes);
+// apiRouter.use('/notifications', notificationsRoutes);
 
 // Health check endpoint for Render/Kubernetes
 apiRouter.get('/health', (req, res) => {
