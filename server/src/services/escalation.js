@@ -8,11 +8,9 @@ import store from '../store/inMemoryStore.js';
 import cycleRepository from '../repository/cycleRepository.js';
 import userRepository from '../repository/userRepository.js';
 
-function logEscalation(rule, user, notes) {
-  const alreadyEscalated = store.escalationLog.some(
-    (log) => log.ruleId === rule.id && log.affectedUserId === user.id && log.status === 'open'
-  );
-  if (alreadyEscalated) return false;
+function logEscalation(rule, user, notes, openEscalations) {
+  const key = `${rule.id}:${user.id}`;
+  if (openEscalations.has(key)) return false;
 
   store.escalationLog.push({
     id: uuidv4(),
@@ -26,6 +24,9 @@ function logEscalation(rule, user, notes) {
     resolvedAt: null,
     notes,
   });
+
+  // Track the open escalation in the local set to prevent duplicate logs
+  openEscalations.add(key);
   return true;
 }
 
@@ -36,6 +37,33 @@ const escalationService = {
 
     let newEscalations = 0;
     const now = new Date();
+
+    // ✅ OPTIMIZED: Pre-load and index open escalations into a Set for O(1) checking
+    const openEscalations = new Set();
+    for (const log of store.escalationLog) {
+      if (log.status === 'open') {
+        openEscalations.add(`${log.ruleId}:${log.affectedUserId}`);
+      }
+    }
+
+    // ✅ OPTIMIZED: Index goal sheets by cycle and employee ID upfront to avoid O(N) searches inside employee loops
+    const sheetsByEmployee = new Map();
+    for (const sheet of store.goalSheets.values()) {
+      if (sheet.cycleId === cycle.id) {
+        sheetsByEmployee.set(sheet.employeeId, sheet);
+      }
+    }
+
+    // ✅ OPTIMIZED: Build index of checked-in employees for the cycle to avoid O(N) scans inside loops
+    const checkedInEmployeesByQuarter = new Map(); // quarter -> Set of employeeIds
+    for (const ci of store.checkIns.values()) {
+      if (ci.cycleId === cycle.id) {
+        if (!checkedInEmployeesByQuarter.has(ci.quarter)) {
+          checkedInEmployeesByQuarter.set(ci.quarter, new Set());
+        }
+        checkedInEmployeesByQuarter.get(ci.quarter).add(ci.employeeId);
+      }
+    }
 
     for (const rule of store.escalationRules.values()) {
       if (!rule.isActive) continue;
@@ -49,7 +77,7 @@ const escalationService = {
             if (sheet.cycleId !== cycle.id || sheet.status !== 'draft') continue;
             const user = store.users.get(sheet.employeeId);
             if (!user) continue;
-            if (logEscalation(rule, user, `Goal sheet in draft for >${rule.thresholdDays} days.`)) {
+            if (logEscalation(rule, user, `Goal sheet in draft for >${rule.thresholdDays} days.`, openEscalations)) {
               newEscalations++;
             }
           }
@@ -67,7 +95,8 @@ const escalationService = {
           if (logEscalation(
             rule,
             user,
-            `Submitted ${Math.floor(daysSinceSubmit)} days ago; pending approval from ${manager?.name || 'manager'}.`
+            `Submitted ${Math.floor(daysSinceSubmit)} days ago; pending approval from ${manager?.name || 'manager'}.`,
+            openEscalations
           )) {
             newEscalations++;
           }
@@ -84,18 +113,17 @@ const escalationService = {
         if (daysSinceOpen <= rule.thresholdDays) continue;
 
         const employees = userRepository.findByRole('employee');
-        for (const emp of employees) {
-          const sheet = Array.from(store.goalSheets.values()).find(
-            (s) => s.employeeId === emp.id && s.cycleId === cycle.id && s.status === 'approved'
-          );
-          if (!sheet) continue;
+        const checkedInSet = checkedInEmployeesByQuarter.get(quarter) || new Set();
 
-          const hasCheckIn = Array.from(store.checkIns.values()).some(
-            (ci) => ci.employeeId === emp.id && ci.cycleId === cycle.id && ci.quarter === quarter
-          );
+        for (const emp of employees) {
+          const sheet = sheetsByEmployee.get(emp.id);
+          if (!sheet || sheet.status !== 'approved') continue;
+
+          // ✅ O(1) Set lookup replacing O(N) array scan
+          const hasCheckIn = checkedInSet.has(emp.id);
           if (hasCheckIn) continue;
 
-          if (logEscalation(rule, emp, `${quarter} check-in overdue by >${rule.thresholdDays} days.`)) {
+          if (logEscalation(rule, emp, `${quarter} check-in overdue by >${rule.thresholdDays} days.`, openEscalations)) {
             newEscalations++;
           }
         }

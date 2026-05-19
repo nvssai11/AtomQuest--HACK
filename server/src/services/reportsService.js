@@ -60,10 +60,11 @@ const reportsService = {
    * @returns {string}
    */
   exportToCSV(data) {
-    // Define canonical column headers always — even when there is no data
-    const headers = data && data.length > 0
-      ? Object.keys(data[0])
-      : ['EmployeeName','Department','ThrustArea','GoalTitle','UoM','Weightage','Target','ActualAchievement','ComputedScore','Status','ManagerComment'];
+    if (!data || data.length === 0) {
+      return '';
+    }
+
+    const headers = Object.keys(data[0]);
 
     // Header row
     const csvRows = [headers.join(',')];

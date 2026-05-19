@@ -27,9 +27,15 @@ const Modal = ({ open, isOpen, onClose, size = 'md', children, ariaLabelledBy, t
 
   if (!isCurrentlyOpen) return null;
 
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose && onClose();
+    }
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={ariaLabelledBy} className={`modal-container modal-${size}`} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={handleOverlayClick}>
+      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={ariaLabelledBy} className={`modal-container modal-${size}`}>
         {title && (
           <div className="modal-header">
             <h2 className="modal-title">{title}</h2>

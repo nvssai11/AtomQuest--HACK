@@ -25,6 +25,15 @@ const checkinsService = {
 
     checkinWindowService.validateCheckinWindow(quarter);
 
+    // ✅ Add validation for at least one achievement
+    const hasAnyAchievement = (entries || []).some(
+      e => e.actualAchievement !== null && e.actualAchievement !== undefined && e.actualAchievement !== ''
+    );
+    
+    if (!hasAnyAchievement) {
+      throw AppError.unprocessable('Check-in must contain at least one achievement value.');
+    }
+
     const cycle = cycleRepository.findActiveCycle();
     if (!cycle) throw AppError.badRequest('No active cycle');
 
@@ -59,9 +68,17 @@ const checkinsService = {
       }
 
       if (goal.isShared && goal.primaryOwnerId !== user.id) {
+        // Recipients of a shared goal must be allowed to submit their own
+        // actualAchievement/status. Use the submitter-provided values when
+        // present; if absent, fall back to any previously-saved entry.
         const existingEntry = checkIn?.entries?.find((e) => e.goalId === goal.id);
-        const actualValue = existingEntry ? existingEntry.actualAchievement : '';
-        const statusValue = existingEntry ? existingEntry.status : 'not-started';
+        const actualValue = entry.actualAchievement !== undefined && entry.actualAchievement !== null
+          ? entry.actualAchievement
+          : (existingEntry ? existingEntry.actualAchievement : '');
+        const statusValue = entry.status !== undefined && entry.status !== null
+          ? entry.status
+          : (existingEntry ? existingEntry.status : 'not-started');
+
         const computedScore = scoringService.calculateScore(
           goal.uom,
           actualValue,
@@ -96,32 +113,59 @@ const checkinsService = {
 
     const savedCheckIn = checkinRepository.save(checkIn);
 
+    // Batch sync shared-goal entries to recipients with simple in-memory caching
+    // to avoid repeated repository calls when multiple master goals map to the
+    // same recipient (mitigates N+1 behavior).
+    const recipientSheetCache = new Map(); // recipientId -> sheet
+    const recipientCheckInCache = new Map(); // recipientId -> checkIn
+
+    // ✅ OPTIMIZED: Pre-load and index goal sheets and check-ins for the active cycle to avoid O(N) queries in nested loops
+    const allSheets = goalRepository.findAllSheets();
+    const sheetsByEmployeeId = new Map();
+    for (const sheet of allSheets) {
+      if (sheet.cycleId === cycle.id) {
+        sheetsByEmployeeId.set(sheet.employeeId, sheet);
+      }
+    }
+
+    const allCheckIns = checkinRepository.findAll();
+    const checkInsByEmployeeId = new Map();
+    for (const ci of allCheckIns) {
+      if (ci.cycleId === cycle.id && ci.quarter === quarter) {
+        checkInsByEmployeeId.set(ci.employeeId, ci);
+      }
+    }
+
     for (const entry of processedEntries) {
       const links = goalRepository.findSharedLinksByMaster(entry.goalId);
+      if (!links || links.length === 0) continue;
+
       for (const link of links) {
-        const recipientSheet = goalRepository.findSheetByEmployeeAndCycle(
-          link.recipientId,
-          cycle.id
-        );
+        // Cache recipient sheet lookup
+        let recipientSheet = recipientSheetCache.get(link.recipientId);
+        if (recipientSheet === undefined) {
+          recipientSheet = sheetsByEmployeeId.get(link.recipientId) || null;
+          recipientSheetCache.set(link.recipientId, recipientSheet);
+        }
         if (!recipientSheet) continue;
 
-        let recipientCheckIn = checkinRepository.findByEmployeeCycleAndQuarter(
-          link.recipientId,
-          cycle.id,
-          quarter
-        );
-
-        if (!recipientCheckIn) {
-          recipientCheckIn = {
-            id: uuidv4(),
-            employeeId: link.recipientId,
-            goalSheetId: recipientSheet.id,
-            quarter,
-            cycleId: cycle.id,
-            managerComment: null,
-            entries: [],
-            createdAt: new Date().toISOString(),
-          };
+        // Cache recipient check-in lookup
+        let recipientCheckIn = recipientCheckInCache.get(link.recipientId);
+        if (recipientCheckIn === undefined) {
+          recipientCheckIn = checkInsByEmployeeId.get(link.recipientId) || null;
+          if (!recipientCheckIn) {
+            recipientCheckIn = {
+              id: uuidv4(),
+              employeeId: link.recipientId,
+              goalSheetId: recipientSheet.id,
+              quarter,
+              cycleId: cycle.id,
+              managerComment: null,
+              entries: [],
+              createdAt: new Date().toISOString(),
+            };
+          }
+          recipientCheckInCache.set(link.recipientId, recipientCheckIn);
         }
 
         const recipientGoalId = link.recipientGoalId;
@@ -138,8 +182,14 @@ const checkinsService = {
 
         recipientCheckIn.entries = updatedEntries;
         recipientCheckIn.updatedAt = new Date().toISOString();
-        checkinRepository.save(recipientCheckIn);
+        // Save to cache only; persist after all links processed for this recipient
+        recipientCheckInCache.set(link.recipientId, recipientCheckIn);
       }
+    }
+
+    // Persist all cached recipient check-ins in a single pass
+    for (const [_, rc] of recipientCheckInCache) {
+      checkinRepository.save(rc);
     }
 
     return savedCheckIn;
@@ -177,21 +227,55 @@ const checkinsService = {
     if (!cycle) throw AppError.badRequest('No active cycle');
 
     const reports = userRepository.findDirectReports(managerId);
+    const reportIds = reports.map((e) => e.id);
+    const reportIdSet = new Set(reportIds);
+
+    // Preload & index to avoid nested O(N) operations
+    const allSheets = goalRepository.findAllSheets();
+    const sheetsByEmployeeId = new Map();
+    for (const sheet of allSheets) {
+      if (sheet.cycleId === cycle.id && reportIdSet.has(sheet.employeeId)) {
+        sheetsByEmployeeId.set(sheet.employeeId, sheet);
+      }
+    }
+
+    const sheetIds = Array.from(sheetsByEmployeeId.values()).map((s) => s.id);
+    const sheetIdSet = new Set(sheetIds);
+
+    const allGoals = goalRepository.findAllGoals();
+    const goalsBySheetId = new Map();
+    for (const goal of allGoals) {
+      if (sheetIdSet.has(goal.goalSheetId)) {
+        if (!goalsBySheetId.has(goal.goalSheetId)) {
+          goalsBySheetId.set(goal.goalSheetId, []);
+        }
+        goalsBySheetId.get(goal.goalSheetId).push(goal);
+      }
+    }
+
+    // Sort to maintain correct creation order
+    for (const goals of goalsBySheetId.values()) {
+      goals.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }
+
+    const allCheckIns = checkinRepository.findAll();
+    const checkInsByEmployeeId = new Map();
+    for (const ci of allCheckIns) {
+      if (ci.cycleId === cycle.id && ci.quarter === quarter && reportIdSet.has(ci.employeeId)) {
+        checkInsByEmployeeId.set(ci.employeeId, ci);
+      }
+    }
 
     return reports.map((employee) => {
-      const sheet = goalRepository.findSheetByEmployeeAndCycle(employee.id, cycle.id);
-      const goals = sheet ? goalRepository.findGoalsBySheetId(sheet.id) : [];
-      const checkIn = checkinRepository.findByEmployeeCycleAndQuarter(
-        employee.id,
-        cycle.id,
-        quarter
-      );
+      const sheet = sheetsByEmployeeId.get(employee.id) || null;
+      const goals = sheet ? (goalsBySheetId.get(sheet.id) || []) : [];
+      const checkIn = checkInsByEmployeeId.get(employee.id) || null;
 
       return {
         employee: userRepository.toPublicProfile(employee),
         sheet,
         goals,
-        checkIn: checkIn || null,
+        checkIn,
       };
     });
   },

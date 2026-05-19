@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import goalRepository from '../repository/goalRepository.js';
 import userRepository from '../repository/userRepository.js';
 import cycleRepository from '../repository/cycleRepository.js';
+import store from '../store/inMemoryStore.js';
 import validationService from './validation.js';
 import auditService from './audit.js';
 import { AppError } from '../errors/AppError.js';
@@ -53,26 +54,59 @@ const goalsService = {
     const cycle = cycleRepository.findActiveCycle();
     if (!cycle) throw AppError.badRequest('No active cycle found.');
 
-    const withGoalSheetCapacity = (employee) => {
-      const sheet = goalRepository.findSheetByEmployeeAndCycle(employee.id, cycle.id);
-      const goals = sheet ? goalRepository.findGoalsBySheetId(sheet.id) : [];
-      const totalWeightage = goals.reduce((sum, goal) => sum + Number(goal.weightage || 0), 0);
+    const getRecipientCapacity = (employeeIds) => {
+      const idSet = new Set(employeeIds);
 
-      return {
-        ...userRepository.toPublicProfile(employee),
-        sheetStatus: sheet?.status || 'draft',
-        goalCount: goals.length,
-        totalWeightage,
-        remainingWeightage: Math.max(100 - totalWeightage, 0),
-      };
+      // Preload & index goal sheets for this cycle and employee list
+      const allSheets = goalRepository.findAllSheets();
+      const sheetsByEmployeeId = new Map();
+      for (const sheet of allSheets) {
+        if (sheet.cycleId === cycle.id && idSet.has(sheet.employeeId)) {
+          sheetsByEmployeeId.set(sheet.employeeId, sheet);
+        }
+      }
+
+      const sheetIds = Array.from(sheetsByEmployeeId.values()).map((s) => s.id);
+      const sheetIdSet = new Set(sheetIds);
+
+      // Preload & index goals for the relevant goal sheets
+      const allGoals = goalRepository.findAllGoals();
+      const goalsBySheetId = new Map();
+      for (const goal of allGoals) {
+        if (sheetIdSet.has(goal.goalSheetId)) {
+          if (!goalsBySheetId.has(goal.goalSheetId)) {
+            goalsBySheetId.set(goal.goalSheetId, []);
+          }
+          goalsBySheetId.get(goal.goalSheetId).push(goal);
+        }
+      }
+
+      return employeeIds.map((empId) => {
+        const employee = userRepository.findById(empId);
+        if (!employee) return null;
+
+        const sheet = sheetsByEmployeeId.get(empId) || null;
+        const goals = sheet ? (goalsBySheetId.get(sheet.id) || []) : [];
+        const totalWeightage = goals.reduce((sum, goal) => sum + Number(goal.weightage || 0), 0);
+
+        return {
+          ...userRepository.toPublicProfile(employee),
+          sheetStatus: sheet?.status || 'draft',
+          goalCount: goals.length,
+          totalWeightage,
+          remainingWeightage: Math.max(100 - totalWeightage, 0),
+        };
+      }).filter(Boolean);
     };
 
     if (user.role === 'admin') {
-      return userRepository.findByRole('employee').map(withGoalSheetCapacity);
+      const adminIds = userRepository.findByRole('employee').map((e) => e.id);
+      return getRecipientCapacity(adminIds);
     }
 
     if (user.role === 'manager') {
-      return userRepository.findDirectReports(user.id).map(withGoalSheetCapacity);
+      const reportIds = userRepository.findDirectReports(user.id).map((e) => e.id);
+      return getRecipientCapacity(reportIds);
     }
 
     throw AppError.forbidden('Only managers or admins can view shared goal recipients.');
@@ -336,6 +370,14 @@ const goalsService = {
         weightage,
         pushedBy: pusher.id,
         pushedAt: new Date().toISOString(),
+      });
+
+      store.notifications.push({
+        id: uuidv4(),
+        userId: recipientId,
+        type: 'goal',
+        text: `🎯 Shared Department KPI pushed by ${pusher.name}: "${title}"`,
+        createdAt: new Date().toISOString()
       });
 
       links.push({ recipientId, recipientGoalId: recipientGoal.id });

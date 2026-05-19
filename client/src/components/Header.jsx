@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../api';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -18,20 +19,42 @@ const Header = () => {
     setIsDark(!isDark);
   };
 
-  const notifications = [
-    { id: 1, type: 'alert', text: '⚠️ Submission pending for Q1 actual achievements.' },
-    { id: 2, type: 'goal', text: '🎯 Shared Sales Department target pushed by John D\'Souza.' },
-    { id: 3, type: 'success', text: '🎉 Manager John D\'Souza approved your goal sheet revisions.' },
-  ];
+  const [notifications, setNotifications] = useState([]);
+
+  // Fetch notifications dynamically on mount and short-poll every 6 seconds
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchNotifications = () => {
+      api.get('/notifications')
+        .then(data => setNotifications(data || []))
+        .catch(err => console.error('Error fetching notifications:', err));
+    };
+
+    fetchNotifications();
+
+    const interval = setInterval(fetchNotifications, 6000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const handleMarkAllRead = () => {
+    api.post('/notifications/clear')
+      .then(() => {
+        setNotifications([]);
+        setShowNotifications(false);
+      })
+      .catch(err => console.error('Error clearing notifications:', err));
+  };
 
   return (
     <header 
-      className="h-16 border-b border-border-color flex items-center justify-between px-6 sticky top-0 z-30" 
+      className="h-16 border-b border-border-color flex items-center justify-between px-6 sticky top-0" 
       style={{ 
         borderBottom: '1px solid var(--border-color)', 
         background: 'var(--bg-glass)', 
         backdropFilter: 'var(--glass-blur)', 
-        WebkitBackdropFilter: 'var(--glass-blur)' 
+        WebkitBackdropFilter: 'var(--glass-blur)',
+        zIndex: 9999
       }}
     >
       <div className="flex items-center gap-6">
@@ -91,12 +114,12 @@ const Header = () => {
           >
             <span>🔔</span>
             <span 
-              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-bold flex items-center justify-center animate-pulse"
+              className={`absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger text-white text-[9px] font-bold flex items-center justify-center ${notifications?.length > 0 ? 'animate-pulse' : 'hidden'}`}
               style={{
                 boxShadow: '0 0 8px var(--danger)'
               }}
             >
-              {notifications.length}
+              {notifications?.length}
             </span>
           </button>
 
@@ -108,36 +131,64 @@ const Header = () => {
                 onClick={() => setShowNotifications(false)}
               ></div>
               <div 
-                className="absolute right-0 mt-2 w-72 rounded-xl border border-border-color p-3 z-50 animate-fade-in"
+                className="animate-fade-in"
                 style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 12px)',
+                  width: '320px',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border-color)',
+                  padding: '1rem',
+                  zIndex: 50,
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
                   background: 'var(--bg-glass)',
                   backdropFilter: 'var(--glass-blur)',
-                  WebkitBackdropFilter: 'var(--glass-blur)',
-                  boxShadow: 'var(--shadow-lg)'
+                  WebkitBackdropFilter: 'var(--glass-blur)'
                 }}
               >
-                <div className="flex items-center justify-between border-b border-border-color pb-2 mb-2">
-                  <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider m-0">System Notifications</h4>
-                  <button 
-                    className="text-[10px] text-brand-600 hover:underline font-bold bg-transparent border-none cursor-pointer"
-                    onClick={() => setShowNotifications(false)}
-                  >
-                    Close
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {notifications.map((n) => (
-                    <div 
-                      key={n.id} 
-                      className="p-2 rounded-lg text-xs leading-normal border border-border-color transition-colors"
-                      style={{
-                        background: 'var(--bg-primary)',
-                        color: 'var(--text-primary)'
-                      }}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
+                  <h4 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>System Notifications</h4>
+                  {notifications?.length > 0 && (
+                    <button 
+                      style={{ fontSize: '10px', color: 'var(--brand-600)', fontWeight: 700, background: 'transparent', border: 'none', cursor: 'pointer' }}
+                      onClick={handleMarkAllRead}
+                      onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                      onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
                     >
-                      {n.text}
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {notifications?.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                      All caught up! 🎉
                     </div>
-                  ))}
+                  ) : (
+                    notifications?.map((n) => (
+                      <div 
+                        key={n.id} 
+                        style={{
+                          padding: '0.75rem',
+                          borderRadius: '0.5rem',
+                          fontSize: '0.75rem',
+                          lineHeight: 1.5,
+                          border: '1px solid',
+                          background: 'var(--bg-primary)',
+                          color: 'var(--text-primary)',
+                          borderColor: n.type === 'alert' ? 'var(--warning-bg)' : n.type === 'success' ? 'var(--success-bg)' : 'var(--border-color)',
+                          borderLeftWidth: '4px',
+                          borderLeftColor: n.type === 'alert' ? 'var(--warning)' : n.type === 'success' ? 'var(--success)' : 'var(--brand-500)',
+                          transition: 'box-shadow 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)'}
+                        onMouseLeave={(e) => e.target.style.boxShadow = 'none'}
+                      >
+                        {n.text}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </>
@@ -154,8 +205,8 @@ const Header = () => {
         
         {/* Glowing Initials Avatar */}
         <div 
-          className="w-9 h-9 rounded-full bg-brand-gradient flex items-center justify-center font-bold border border-white/10 shadow-sm transition-transform duration-200 hover:scale-105"
-          style={{ color: '#ffffff' }}
+          className="w-9 h-9 rounded-full flex items-center justify-center font-bold border border-white/10 shadow-sm transition-transform duration-200 hover:scale-105"
+          style={{ background: 'var(--brand-500)', color: '#ffffff' }}
         >
           {user?.name?.charAt(0) || 'U'}
         </div>

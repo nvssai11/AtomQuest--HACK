@@ -69,6 +69,13 @@ const GoalSheet = () => {
   }, [user?.role]);
 
   useEffect(() => {
+    if (isShareModalOpen) {
+      api.invalidateCache('/goals/share-recipients');
+      api.get('/goals/share-recipients').then(setShareRecipients).catch(console.error);
+    }
+  }, [isShareModalOpen]);
+
+  useEffect(() => {
     if (isModalOpen && titleInputRef.current) {
       setTimeout(() => titleInputRef.current?.focus(), 50);
     }
@@ -258,30 +265,28 @@ const GoalSheet = () => {
           </div>
         </div>
 
-        {isEditable && (canManageOwnGoals || canPushSharedGoal) && (
-          <div className="page-header-actions">
-            {canPushSharedGoal && (
-              <Button variant="secondary" onClick={() => setIsShareModalOpen(true)}>
-                Push Shared Goal
+        <div className="page-header-actions">
+          {canPushSharedGoal && (
+            <Button variant="secondary" onClick={() => setIsShareModalOpen(true)}>
+              Push Shared Goal
+            </Button>
+          )}
+          {isEditable && canManageOwnGoals && (
+            <>
+              <Button 
+                variant="secondary"
+                onClick={() => { setEditingGoal(null); setIsModalOpen(true); }}
+                disabled={!canAddGoal}
+                title={addGoalDisabledReason || 'Add a new goal'}
+              >
+                + Add Goal
               </Button>
-            )}
-            {canManageOwnGoals && (
-              <>
-                <Button 
-                  variant="secondary"
-                  onClick={() => { setEditingGoal(null); setIsModalOpen(true); }}
-                  disabled={!canAddGoal}
-                  title={addGoalDisabledReason || 'Add a new goal'}
-                >
-                  + Add Goal
-                </Button>
-                <Button variant="primary" onClick={() => setConfirmSubmitOpen(true)} disabled={!canSubmit}>
-                  Submit for Approval
-                </Button>
-              </>
-            )}
-          </div>
-        )}
+              <Button variant="primary" onClick={() => setConfirmSubmitOpen(true)} disabled={!canSubmit}>
+                Submit for Approval
+              </Button>
+            </>
+          )}
+        </div>
       </section>
 
       {addGoalDisabledReason && (
@@ -379,6 +384,7 @@ const GoalSheet = () => {
             ref={titleInputRef}
             required
             disabled={editingGoal?.isShared && editingGoal.primaryOwnerId !== user?.id}
+            readOnly={editingGoal?.isShared && editingGoal.primaryOwnerId !== user?.id}
             value={newGoal.title}
             onChange={e => setNewGoal({...newGoal, title: e.target.value})}
             placeholder="e.g. Improve engineer productivity"
@@ -390,6 +396,7 @@ const GoalSheet = () => {
             rows="3"
             className="resize-none"
             disabled={editingGoal?.isShared && editingGoal.primaryOwnerId !== user?.id}
+            readOnly={editingGoal?.isShared && editingGoal.primaryOwnerId !== user?.id}
             value={newGoal.description}
             onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
             placeholder="Provide a brief goal description..."
@@ -424,6 +431,7 @@ const GoalSheet = () => {
               min={newGoal.uom.includes('percent') || newGoal.uom === 'zero' ? '0' : undefined}
               max={newGoal.uom.includes('percent') || newGoal.uom === 'zero' ? '100' : undefined}
               disabled={newGoal.uom === 'zero' || (editingGoal?.isShared && editingGoal.primaryOwnerId !== user?.id)}
+              readOnly={newGoal.uom === 'zero' || (editingGoal?.isShared && editingGoal.primaryOwnerId !== user?.id)}
               value={newGoal.uom === 'zero' ? '0' : newGoal.target}
               onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })}
               placeholder={newGoal.uom === 'timeline' ? '' : 'Target value'}

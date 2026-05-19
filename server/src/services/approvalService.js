@@ -3,8 +3,11 @@
  * @description Manager workflow for reviewing and approving goal sheets.
  */
 
+import { v4 as uuidv4 } from 'uuid';
 import goalRepository from '../repository/goalRepository.js';
 import userRepository from '../repository/userRepository.js';
+import cycleRepository from '../repository/cycleRepository.js';
+import store from '../store/inMemoryStore.js';
 import validationService from './validation.js';
 import { AppError } from '../errors/AppError.js';
 
@@ -60,6 +63,15 @@ const approvalService = {
 
     assertManagerOfEmployee(managerId, sheet.employeeId);
 
+    // ✅ Add cycle phase check: only allow approvals during the approval phase
+    const cycle = cycleRepository.findActiveCycle();
+    if (!cycle) throw AppError.badRequest('No active cycle');
+    if (cycle.activePhase !== 'approval') {
+      throw AppError.forbidden(
+        `Cannot approve goals outside approval phase. Current phase: ${cycle.activePhase}`
+      );
+    }
+
     if (sheet.status !== 'submitted') {
       throw AppError.badRequest('Sheet is not pending approval.');
     }
@@ -93,6 +105,16 @@ const approvalService = {
       });
     }
 
+    const manager = userRepository.findById(managerId);
+
+    store.notifications.push({
+      id: uuidv4(),
+      userId: sheet.employeeId,
+      type: 'success',
+      text: `🎉 Manager ${manager?.name || 'John'} approved your goal sheet revisions.`,
+      createdAt: new Date().toISOString()
+    });
+
     return goalRepository.saveSheet({
       ...sheet,
       status: 'approved',
@@ -116,6 +138,16 @@ const approvalService = {
     if (sheet.status !== 'submitted') {
       throw AppError.badRequest('Sheet is not pending approval.');
     }
+
+    const manager = userRepository.findById(managerId);
+
+    store.notifications.push({
+      id: uuidv4(),
+      userId: sheet.employeeId,
+      type: 'alert',
+      text: `⚠️ Manager ${manager?.name || 'John'} returned your goal sheet: "${comment.trim()}"`,
+      createdAt: new Date().toISOString()
+    });
 
     return goalRepository.saveSheet({
       ...sheet,
